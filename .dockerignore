@@ -1,0 +1,49 @@
+# 不打包任何 .env 及其变体
+.env
+.env.*
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+.venv/
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# 日志
+*.log
+logs/
+
+# 测试文件（可选）
+tests/
+test_*.py
+
+# 本地临时文件
+tmp/
+temp/
+
+# 测试环境上传的文件
+uploads/
+
+# 本地数据库
+*.db

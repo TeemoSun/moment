@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>粥粥的秘密树洞</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 100%;
+            margin: auto;
+            padding: 15px 10px;
+            box-sizing: border-box;
+            background: #fafafa;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .moment {
+            border: 1px solid #ccc;
+            padding: 8px;
+            margin-top: 10px;
+            border-radius: 10px;
+            background: #fff;
+            word-break: break-word;
+        }
+
+        .moment-content-box {
+            background-color: #e4f2fd;
+            border-radius: 10px;
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        form {
+            margin-bottom: 30px;
+        }
+
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1rem;
+            resize: vertical;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+
+        button {
+            padding: 7px 14px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .comments {
+            margin-top: 10px;
+        }
+
+        .comment-item {
+            margin-top: 5px;
+            font-size: 0.9rem;
+        }
+
+        .comment-time {
+            color: gray;
+            font-size: 0.8rem;
+        }
+
+        .user-info-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .user-actions a {
+            color: #999;
+            text-decoration: none;
+            margin-left: 4px;
+        }
+
+        .user-actions a:hover {
+            color: #666;
+        }
+
+        .flash-msg {
+            color: red;
+            margin-bottom: 10px;
+        }
+
+        .comment-level {
+            margin-left: 20px;
+            border-left: 2px solid #eee;
+            padding-left: 10px;
+        }
+
+        .send-btn,
+        .cancel-btn {
+            padding: 5px 8px;
+            font-size: 0.8rem;
+            background: #3695fa;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .send-btn:hover,
+        .cancel-btn:hover {
+            background: #2273ca;
+        }
+
+        .reply-btn {
+            padding: 2px 6px;
+            font-size: 0.8rem;
+            background: #aae0ff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+            color: #f8f8f8;
+        }
+
+        .reply-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .reply-btn-to-moment {
+            padding: 2px 6px;
+            font-size: 0.8rem;
+            background-color: #70cbff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+            color: #f8f8f8;
+        }
+
+        .reply-btn-to-moment:hover {
+            background-color: #e0e0e0;
+        }
+
+        .reply-form {
+            padding: 8px;
+            background: #f8f8f8;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .delete-btn {
+            padding: 2px 6px;
+            font-size: 0.8rem;
+            background: #ff5a5a;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+            color: #f8f8f8;
+        }
+
+        .delete-btn:hover {
+            background: #f5c6cb;
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .image-container img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .view-original-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .view-original-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        /* 新增样式 */
+        .new-moment-form {
+            display: none;
+        }
+
+        .new-moment-button {
+            padding: 7px 14px;
+            font-size: 1rem;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .new-moment-button:hover {
+            background-color: #0056b3;
+        }
+  
+        /* 下拉框的统一美化样式 */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 6px 8px;
+            width: 85px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 15px;
+            outline: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 12px;
+        }
+
+        select:hover {
+            border-color: #007bff;
+        }
+
+        select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="user-info-container">
+            <div class="user-greeting">
+                你好，{{ current_user.username }}
+            </div>
+            <div class="user-actions">
+                <a href="{{ url_for('change_password') }}">修改密码</a>
+                <a href="{{ url_for('set_avatar') }}">设置头像</a>
+                <a href="{{ url_for('logout') }}">登出</a>
+            </div>
+        </div>
+
+        <!-- {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-msg">{{ messages[0] }}</div>
+        {% endif %}
+        {% endwith %} -->
+
+        <h1 style="text-align: center; font-size: 1.7rem; margin-top: 30px; margin-bottom: 30px;">🌳 粥粥的秘密树洞 🪵</h1>
+
+        <div id="top-buttons-and-selector" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <button id="show-new-moment-form" class="new-moment-button">发布新说说</button>
+            <div style="display:flex; align-items: center; gap: 8px;">
+                <span style="margin-bottom: 15px;">分区：</span>
+                <select id="category-selector">
+                    <option value="0" {% if current_category == 0 %}selected{% endif %}>全部</option>
+                    <option value="1" {% if current_category == 1 %}selected{% endif %}>学习区</option>
+                    <option value="2" {% if current_category == 2 %}selected{% endif %}>生活区</option>
+                    <option value="3" {% if current_category == 3 %}selected{% endif %}>打卡区</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="new-moment-form" class="new-moment-form">
+            <form id="publish-moment-form" method="POST" enctype="multipart/form-data">
+                <textarea name="text" rows="3" placeholder="分享点什么吧..." required></textarea><br>
+                <input type="file" name="image" accept="image/*"><br>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                    <span style="margin-bottom: 15px;">发布分区：</span>
+                    <select name="category">
+                        <option value="1">学习区</option>
+                        <option value="2">生活区</option>
+                        <option value="3">打卡区</option>
+                    </select>
+                </div><br>
+                <button type="submit">发布</button>
+                <button type="button" id="cancel-new-moment">取消</button>
+            </form>
+        </div>
+
+        {% for moment in moments %}
+        <div class="moment" data-moment-id="{{ moment.id }}">
+            <div class="moment-content-box">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    {% if moment.avatar_path %}
+                    <img src="{{ url_for('static', filename=moment.avatar_path) }}"
+                        style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                    {% else %}
+                    <img src="{{ url_for('static', filename='default_avatar.png') }}"
+                        style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                    {% endif %}
+                    <strong>{{ moment.username }}</strong>
+                </div>
+                <p>{{ moment.text }}</p>
+                {% if moment.image_path %}
+                <div class="image-container">
+                    <img src="{{ url_for('static', filename=moment.image_path) }}" alt="图片">
+                    {# 计算原图路径（去掉后缀，再加 _original.jpg） #}
+                    {% set base = moment.image_path.rsplit('.', 1)[0] %}
+                    <a href="{{ url_for('static', filename=base + '_original.jpg') }}" target="_blank"
+                        class="view-original-btn">
+                        查看原图
+                    </a>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <small>发表于 {{ moment.timestamp }}</small>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <button class="reply-btn-to-moment" data-moment-id="{{ moment.id }}">回复</button>
+                        {% if moment.username == current_user.username %}
+                        <form style="margin: 0;">
+                            <button type="button" class="delete-btn" data-moment-id="{{ moment.id }}">删除</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="moment-reply-form" style="display: none; margin-top:10px;">
+                <form class="comment-form">
+                    <input type="hidden" name="moment_id" value="{{ moment.id }}">
+                    <textarea id="autoExpand" name="comment_text" placeholder="添加评论..." required
+                        style="width: 100%; min-height: 32px; overflow: hidden; resize: none;"></textarea>
+                    <button type="submit" class="send-btn">发送</button>
+                    <button type="button" class="cancel-btn">取消</button>
+                </form>
+            </div>
+
+            <div class="comments">
+                {% if moment.comments|length > 0 %}
+                <strong>评论：</strong>
+                {% endif %}
+                {% macro render_comments(comments, moment_id, level=0) %}
+                {% for comment in comments %}
+                <div class="comment-item {% if level > 0 %}comment-level{% endif %}">
+                    <div style="display:flex; align-items:flex-start; gap:6px;">
+                        {% if comment.avatar_path %}
+                        <img src="{{ url_for('static', filename=comment.avatar_path) }}"
+                            style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='default_avatar.png') }}"
+                            style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+                        {% endif %}
+                        <div>
+                            <strong>{{ comment.username }}</strong>：{{ comment.text }}<br>
+
+                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                                <small class="comment-time">{{ comment.timestamp }}</small>
+                                <button class="reply-btn" data-comment-id="{{ comment.id }}">回复</button>
+                                {% if comment.username == current_user.username %}
+                                <form style="margin: 0;">
+                                    <button type="button" class="delete-btn" data-comment-id="{{ comment.id }}">删除</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="reply-form" style="display:none;">
+                        <form class="comment-form">
+                            <input type="hidden" name="moment_id" value="{{ moment_id }}">
+                            <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+                            <textarea name="comment_text" placeholder="回复{{ comment.username }}..." required
+                                oninput="this.style.height='auto';this.style.height=this.scrollHeight + 'px';"
+                                style="width: 100%; min-height: 32px; resize: none; overflow: hidden;"></textarea>
+                            <button type="submit" class="send-btn">发送</button>
+                            <button type="button" class="cancel-btn">取消</button>
+                        </form>
+                    </div>
+
+                    {{ render_comments(comment.children, moment_id, level+1) }}
+                </div>
+                {% endfor %}
+                {% endmacro %}
+
+                {{ render_comments(moment.comments, moment.id) }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 显示/隐藏发布说说表单
+            const newMomentForm = document.getElementById('new-moment-form');
+            const showNewMomentBtn = document.getElementById('show-new-moment-form');
+            const cancelNewMomentBtn = document.getElementById('cancel-new-moment');
+
+            showNewMomentBtn.addEventListener('click', () => {
+                newMomentForm.style.display = 'block';
+                showNewMomentBtn.style.display = 'none';
+            });
+            cancelNewMomentBtn.addEventListener('click', () => {
+                newMomentForm.style.display = 'none';
+                showNewMomentBtn.style.display = 'block';
+            });
+
+            // 监听分区选择器变化
+            const categorySelector = document.getElementById('category-selector');
+            categorySelector.addEventListener('change', function () {
+                window.location.href = `/?category_id=${this.value}`;
+            });
+
+            // 新增：监听发布说说表单提交
+            document.getElementById('publish-moment-form').addEventListener('submit', async function (e) {
+                e.preventDefault(); // 阻止表单默认提交
+                const formData = new FormData(this);
+                const response = await fetch('/publish_moment', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('发布成功！');
+                    window.location.reload(); 
+                } else {
+                    alert(result.message);
+                }
+            });
+
+            // 新增：监听评论表单提交
+            document.querySelectorAll('.comment-form').forEach(form => {
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault(); // 阻止表单默认提交
+                    const formData = new FormData(this);
+                    const response = await fetch('/post_comment', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('评论成功！');
+                        window.location.reload();
+                    } else {
+                        alert(result.message);
+                    }
+                });
+            });
+
+            // 新增：监听删除说说按钮
+            document.querySelectorAll('.moment .delete-btn').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    if (confirm('确定要删除这条动态吗？')) {
+                        const momentId = this.getAttribute('data-moment-id');
+                        const response = await fetch(`/delete_moment/${momentId}`, {
+                            method: 'POST'
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            const momentElement = this.closest('.moment');
+                            momentElement.remove();
+                            alert('说说已删除');
+                        } else {
+                            alert(result.message);
+                        }
+                    }
+                });
+            });
+
+            // 新增：监听删除评论按钮
+            document.querySelectorAll('.comment-item .delete-btn').forEach(btn => {
+                btn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    if (confirm('确定要删除这条评论吗？')) {
+                        const commentId = this.getAttribute('data-comment-id');
+                        const response = await fetch(`/delete_comment/${commentId}`, {
+                            method: 'POST'
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            const commentItemElement = this.closest('.comment-item');
+                            commentItemElement.remove();
+                            alert('评论已删除');
+                        } else {
+                            alert(result.message);
+                        }
+                    }
+                });
+            });
+            
+            // 显示/隐藏评论表单
+            document.querySelectorAll('.reply-btn-to-moment').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.moment-reply-form').forEach(form => form.style.display = 'none');
+                    document.querySelectorAll('.reply-form').forEach(form => form.style.display = 'none');
+                    const form = this.closest('.moment').querySelector('.moment-reply-form');
+                    form.style.display = 'block';
+                    form.querySelector('textarea').focus();
+                });
+            });
+
+            // 取消评论
+            document.querySelectorAll('.moment-reply-form .cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const momentReplyForm = this.closest('.moment-reply-form');
+                    momentReplyForm.style.display = 'none';
+                    momentReplyForm.querySelector('textarea').value = '';
+                });
+            });
+
+            // 显示/隐藏回复评论表单
+            document.querySelectorAll('.reply-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.reply-form').forEach(form => form.style.display = 'none');
+                    const replyForm = this.closest('.comment-item').querySelector('.reply-form');
+                    replyForm.style.display = 'block';
+                    replyForm.querySelector('textarea').focus();
+                });
+            });
+
+            // 取消回复评论
+            document.querySelectorAll('.reply-form .cancel-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const replyForm = this.closest('.reply-form');
+                    replyForm.style.display = 'none';
+                    replyForm.querySelector('textarea').value = '';
+                });
+            });
+            
+            // 自动调整textarea高度
+            document.addEventListener('input', function (e) {
+                if (e.target.tagName.toLowerCase() !== 'textarea') return;
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+            });
+
+            // 监听全局点击事件，隐藏表单
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.reply-form') && !e.target.closest('.moment-reply-form') && 
+                    !e.target.classList.contains('reply-btn') && !e.target.classList.contains('reply-btn-to-moment') && 
+                    !e.target.closest('#new-moment-form') && !e.target.classList.contains('new-moment-button')) {
+                    document.querySelectorAll('.reply-form').forEach(form => form.style.display = 'none');
+                    document.querySelectorAll('.moment-reply-form').forEach(form => form.style.display = 'none');
+                    document.getElementById('new-moment-form').style.display = 'none';
+                    document.getElementById('show-new-moment-form').style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
