@@ -210,4 +210,4 @@ __marimo__/
 static/uploads/
 
 # database
-moment.db
+moments.db
