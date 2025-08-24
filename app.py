@@ -97,6 +97,20 @@ def init_db():
     if "category" not in columns:
         c.execute("ALTER TABLE moments ADD COLUMN category INTEGER DEFAULT 1")
 
+    # 创建图片表，用于存储多张图片
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS moment_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            moment_id INTEGER,
+            image_path TEXT,
+            original_path TEXT,
+            upload_order INTEGER DEFAULT 0,
+            FOREIGN KEY(moment_id) REFERENCES moments(id) ON DELETE CASCADE
+        )
+    """
+    )
+
     # ... (comments 表的创建保持不变)
     c.execute(
         """
@@ -214,6 +228,18 @@ def index():
     for moment in moments_data:
         moment_id, text, image_path, timestamp, username, avatar_path = moment
 
+        # 查询该说说下的所有图片
+        c.execute(
+            """
+            SELECT image_path, original_path
+            FROM moment_images 
+            WHERE moment_id = ? 
+            ORDER BY upload_order ASC
+        """,
+            (moment_id,),
+        )
+        images_data = c.fetchall()
+
         # 查询该说说下的所有评论
         c.execute(
             """
@@ -270,7 +296,8 @@ def index():
             {
                 "id": moment_id,
                 "text": text,
-                "image_path": image_path,
+                "image_path": image_path,  # 保留原有字段以兼容
+                "images": images_data,     # 新增多图片字段
                 "timestamp": timestamp,
                 "username": username,
                 "comments": top_level_comments,  # 只包含顶级评论
@@ -291,28 +318,48 @@ def index():
 @login_required
 def publish_moment():
     text = request.form.get("text")
-    image = request.files.get("image")
+    images = request.files.getlist("images")  # 改为 getlist 支持多张图片
     category = request.form.get("category", 1)
 
-    if not text and not image:
+    if not text and not images:
         return jsonify({"success": False, "message": "内容或图片不能为空"}), 400
 
     conn = sqlite3.connect("moments.db")
     c = conn.cursor()
-    image_path = None
-    if image and image.filename != "":
-        filename = secure_filename(image.filename)
-        compressed_image = compress_image(image)
-        filename = f"{os.path.splitext(filename)[0]}.jpg"
-        save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        with open(save_path, "wb") as f:
-            f.write(compressed_image.getvalue())
-        image_path = f"uploads/{filename}"
-
+    
+    # 先插入说说记录
     c.execute(
-        "INSERT INTO moments (text, image_path, user_id, category) VALUES (?, ?, ?, ?)",
-        (text, image_path, current_user.id, category),
+        "INSERT INTO moments (text, user_id, category) VALUES (?, ?, ?)",
+        (text, current_user.id, category),
     )
+    moment_id = c.lastrowid
+
+    # 处理多张图片
+    if images and len(images) > 0:
+        for idx, image in enumerate(images):
+            if image and image.filename != "":
+                filename = secure_filename(image.filename)
+                compressed_image = compress_image(image, moment_id=moment_id, idx=idx)
+                filename = f"{moment_id}_{idx}_{os.path.splitext(filename)[0]}.jpg"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                
+                with open(save_path, "wb") as f:
+                    f.write(compressed_image.getvalue())
+                
+                # 获取原图路径（在compress_image函数中已经保存）
+                original_filename = secure_filename(image.filename)
+                original_name, ext = os.path.splitext(original_filename)
+                if image.filename.endswith(".jpg"):
+                    original_path = f"uploads/{moment_id}_{idx}_{original_name}_original{ext}"
+                else:
+                    original_path = f"uploads/{moment_id}_{idx}_{original_name}_original.jpg"
+                
+                # 将图片信息保存到图片表
+                c.execute(
+                    "INSERT INTO moment_images (moment_id, image_path, original_path, upload_order) VALUES (?, ?, ?, ?)",
+                    (moment_id, f"uploads/{filename}", original_path, idx),
+                )
+
     conn.commit()
     conn.close()
 
@@ -363,7 +410,8 @@ def delete_moment(moment_id):
         conn.close()
         return jsonify({"success": False, "message": "没有权限删除"}), 403
 
-    # 删除说说及其所有评论
+    # 删除说说及其所有评论和图片
+    c.execute("DELETE FROM moment_images WHERE moment_id = ?", (moment_id,))
     c.execute("DELETE FROM comments WHERE moment_id = ?", (moment_id,))
     c.execute("DELETE FROM moments WHERE id = ?", (moment_id,))
     conn.commit()
@@ -625,6 +673,7 @@ def admin_moments():
 def admin_delete_moment(moment_id):
     conn = sqlite3.connect("moments.db")
     c = conn.cursor()
+    c.execute("DELETE FROM moment_images WHERE moment_id = ?", (moment_id,))
     c.execute("DELETE FROM moments WHERE id = ?", (moment_id,))
     c.execute("DELETE FROM comments WHERE moment_id = ?", (moment_id,))
     conn.commit()
@@ -667,24 +716,34 @@ def admin_delete_comment(comment_id):
 
 
 # 图片压缩函数
-def compress_image(image, max_size_kb=200):
+def compress_image(image, max_size_kb=200, moment_id=None, idx=None):
     """压缩图片到指定大小以下，返回压缩后的字节数据"""
 
     # 如果原始图片的后缀为jpg，保存原始图片（不做任何修改，直接写入）
     if image.filename.endswith(".jpg"):
         original_filename = secure_filename(image.filename)
         original_name, ext = os.path.splitext(original_filename)
-        original_path = os.path.join(
-            app.config["UPLOAD_FOLDER"], f"{original_name}_original{ext}"
-        )
+        if moment_id is not None and idx is not None:
+            original_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{moment_id}_{idx}_{original_name}_original{ext}"
+            )
+        else:
+            original_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{original_name}_original{ext}"
+            )
 
     # 否则，保存为jpg后缀
     else:
         original_filename = secure_filename(image.filename)
         original_name, ext = os.path.splitext(original_filename)
-        original_path = os.path.join(
-            app.config["UPLOAD_FOLDER"], f"{original_name}_original.jpg"
-        )
+        if moment_id is not None and idx is not None:
+            original_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{moment_id}_{idx}_{original_name}_original.jpg"
+            )
+        else:
+            original_path = os.path.join(
+                app.config["UPLOAD_FOLDER"], f"{original_name}_original.jpg"
+            )
 
     image.stream.seek(0)
     with open(original_path, "wb") as f:

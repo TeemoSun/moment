@@ -279,6 +279,90 @@
             border-color: #007bff;
             box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
         }
+
+        /* 多图片布局样式 */
+        .images-container {
+            display: grid;
+            gap: 10px;
+        }
+
+        /* 默认单列布局 */
+        .images-container {
+            grid-template-columns: 1fr;
+        }
+
+        /* 2张图片 - 两列 */
+        .images-container.img-count-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* 3张图片 - 第一张占全宽，下面两张并排 */
+        .images-container.img-count-3 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .images-container.img-count-3 .image-container:first-child {
+            grid-column: 1 / -1;
+        }
+
+        /* 4张图片 - 2x2网格 */
+        .images-container.img-count-4 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        /* 5张及以上图片 - 3列网格 */
+        .images-container.img-count-5,
+        .images-container.img-count-6,
+        .images-container.img-count-7,
+        .images-container.img-count-8,
+        .images-container.img-count-9 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        /* 图片预览样式 */
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            margin: 0;
+        }
+
+        .image-preview-remove {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-preview-remove:hover {
+            background: rgba(255, 0, 0, 1);
+        }
     </style>
 </head>
 
@@ -319,7 +403,8 @@
         <div id="new-moment-form" class="new-moment-form">
             <form id="publish-moment-form" method="POST" enctype="multipart/form-data">
                 <textarea name="text" rows="3" placeholder="分享点什么吧..." required></textarea><br>
-                <input type="file" name="image" accept="image/*"><br>
+                <input type="file" name="images" accept="image/*" multiple id="image-input"><br>
+                <div id="image-preview" style="margin-top: 10px;"></div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
                     <span style="margin-bottom: 15px;">发布分区：</span>
                     <select name="category">
@@ -347,7 +432,23 @@
                     <strong>{{ moment.username }}</strong>
                 </div>
                 <p>{{ moment.text }}</p>
-                {% if moment.image_path %}
+                
+                {# 显示多张图片 #}
+                {% if moment.images and moment.images|length > 0 %}
+                <div class="images-container img-count-{{ moment.images|length }}" style="display: grid; gap: 10px; margin: 10px 0;">
+                    {% for image_path, original_path in moment.images %}
+                    <div class="image-container">
+                        <img src="{{ url_for('static', filename=image_path) }}" alt="图片">
+                        <a href="{{ url_for('static', filename=original_path) }}" target="_blank"
+                            class="view-original-btn">
+                            查看原图
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                {# 兼容旧数据：如果没有多张图片但有单张图片 #}
+                {% elif moment.image_path %}
                 <div class="image-container">
                     <img src="{{ url_for('static', filename=moment.image_path) }}" alt="图片">
                     {# 计算原图路径（去掉后缀，再加 _original.jpg） #}
@@ -437,6 +538,57 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            let selectedFiles = [];
+
+            // 图片预览功能
+            const imageInput = document.getElementById('image-input');
+            const imagePreview = document.getElementById('image-preview');
+
+            imageInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                selectedFiles = files;
+                updateImagePreview();
+            });
+
+            function updateImagePreview() {
+                imagePreview.innerHTML = '';
+                if (selectedFiles.length === 0) return;
+
+                imagePreview.innerHTML = '<div style="margin-bottom: 10px; font-size: 14px; color: #666;">已选择 ' + selectedFiles.length + ' 张图片：</div>';
+                
+                const previewContainer = document.createElement('div');
+                previewContainer.className = 'image-preview';
+                
+                selectedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'image-preview-item';
+                        previewItem.innerHTML = `
+                            <img src="${e.target.result}" alt="预览图片">
+                            <button type="button" class="image-preview-remove" onclick="removeImage(${index})">×</button>
+                        `;
+                        previewContainer.appendChild(previewItem);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                
+                imagePreview.appendChild(previewContainer);
+            }
+
+            // 删除预览图片
+            window.removeImage = function(index) {
+                selectedFiles.splice(index, 1);
+                updateImagePreview();
+                updateFileInput();
+            };
+
+            function updateFileInput() {
+                const dt = new DataTransfer();
+                selectedFiles.forEach(file => dt.items.add(file));
+                imageInput.files = dt.files;
+            }
+
             // 显示/隐藏发布说说表单
             const newMomentForm = document.getElementById('new-moment-form');
             const showNewMomentBtn = document.getElementById('show-new-moment-form');
@@ -449,6 +601,10 @@
             cancelNewMomentBtn.addEventListener('click', () => {
                 newMomentForm.style.display = 'none';
                 showNewMomentBtn.style.display = 'block';
+                // 重置表单
+                document.getElementById('publish-moment-form').reset();
+                selectedFiles = [];
+                updateImagePreview();
             });
 
             // 监听分区选择器变化
@@ -461,6 +617,13 @@
             document.getElementById('publish-moment-form').addEventListener('submit', async function (e) {
                 e.preventDefault(); // 阻止表单默认提交
                 const formData = new FormData(this);
+                
+                // 移除原有的 images 字段，重新添加选中的文件
+                formData.delete('images');
+                selectedFiles.forEach(file => {
+                    formData.append('images', file);
+                });
+                
                 const response = await fetch('/publish_moment', {
                     method: 'POST',
                     body: formData
