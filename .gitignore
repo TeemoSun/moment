@@ -208,6 +208,7 @@ __marimo__/
 
 # local file
 static/uploads/
+requirements.txt
 
 # database
 moments.db
