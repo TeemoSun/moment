@@ -715,6 +715,116 @@ def admin_delete_comment(comment_id):
     return redirect(url_for("admin_comments"))
 
 
+# API: 获取最新的10条说说
+@app.route("/api/moments", methods=["GET"])
+def api_get_moments():
+    """返回最新的10条说说及其评论、图片等信息"""
+    try:
+        conn = sqlite3.connect("moments.db")
+        c = conn.cursor()
+        
+        # 获取最新的10条说说
+        c.execute("""
+            SELECT moments.id, moments.text, moments.image_path, 
+                   datetime(moments.timestamp, "+8 hours") as timestamp, 
+                   users.username, users.avatar_path, moments.category
+            FROM moments 
+            JOIN users ON moments.user_id = users.id
+            ORDER BY moments.timestamp DESC
+            LIMIT 10
+        """)
+        
+        moments_data = c.fetchall()
+        moments = []
+        
+        for moment in moments_data:
+            moment_id, text, image_path, timestamp, username, avatar_path, category = moment
+            
+            # 查询该说说的所有图片
+            c.execute("""
+                SELECT image_path, original_path
+                FROM moment_images 
+                WHERE moment_id = ? 
+                ORDER BY upload_order ASC
+            """, (moment_id,))
+            images_data = c.fetchall()
+            
+            # 查询该说说的所有评论
+            c.execute("""
+                SELECT comments.id, comments.comment_text, 
+                       datetime(comments.timestamp, "+8 hours") as timestamp, 
+                       users.username, users.avatar_path, comments.parent_comment_id
+                FROM comments 
+                JOIN users ON comments.user_id = users.id 
+                WHERE comments.moment_id = ? 
+                ORDER BY comments.timestamp ASC
+            """, (moment_id,))
+            comments_data = c.fetchall()
+            
+            # 构建评论树结构
+            comments_map = {}
+            top_level_comments = []
+            
+            # 创建所有评论对象
+            for comment in comments_data:
+                comment_id, comment_text, comment_timestamp, comment_username, comment_avatar_path, parent_id = comment
+                comment_obj = {
+                    "id": comment_id,
+                    "text": comment_text,
+                    "timestamp": comment_timestamp,
+                    "username": comment_username,
+                    "avatar_path": comment_avatar_path,
+                    "children": []
+                }
+                comments_map[comment_id] = comment_obj
+                
+                if parent_id is None:
+                    top_level_comments.append(comment_obj)
+            
+            # 构建评论层级关系
+            for comment in comments_data:
+                comment_id, _, _, _, _, parent_id = comment
+                if parent_id is not None and parent_id in comments_map:
+                    parent_comment = comments_map[parent_id]
+                    current_comment = comments_map[comment_id]
+                    parent_comment["children"].append(current_comment)
+            
+            # 构建说说对象
+            moment_obj = {
+                "id": moment_id,
+                "text": text,
+                "timestamp": timestamp,
+                "username": username,
+                "avatar_path": avatar_path,
+                "category": category,
+                "images": [{"image_path": img[0], "original_path": img[1]} for img in images_data],
+                "comments": top_level_comments,
+                "comments_count": len(comments_data)
+            }
+            
+            # 兼容旧版本的image_path字段
+            if images_data:
+                moment_obj["image_path"] = images_data[0][0]
+            else:
+                moment_obj["image_path"] = image_path
+            
+            moments.append(moment_obj)
+        
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "data": moments,
+            "total": len(moments)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"获取说说数据失败: {str(e)}"
+        }), 500
+
+
 # 图片压缩函数
 def compress_image(image, max_size_kb=200, moment_id=None, idx=None):
     """压缩图片到指定大小以下，返回压缩后的字节数据"""
