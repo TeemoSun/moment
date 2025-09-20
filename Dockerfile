@@ -7,7 +7,7 @@ RUN echo 'deb https://mirrors.aliyun.com/debian/ bookworm main contrib non-free'
 
 # 系统依赖
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libc6-dev supervisor && \
+    apt-get install -y --no-install-recommends supervisor && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
