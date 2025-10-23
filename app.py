@@ -903,4 +903,4 @@ def compress_image(image, max_size_kb=200, moment_id=None, idx=None):
 if __name__ == "__main__":
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     init_db()
-    app.run(debug=True, host="127.0.0.1", port=80)
+    app.run(debug=True, host="0.0.0.0", port=80)
