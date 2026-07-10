@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
+import { Send } from 'lucide-react'
+import { Button, Card } from 'liquidify-react'
 import { postApi, commentApi } from '@/api'
 import { PostCard } from '@/components/PostCard'
 import { CommentItem } from '@/components/CommentItem'
@@ -30,22 +32,22 @@ export default function PostDetailPage() {
   return (
     <div>
       {post && <PostCard post={post} />}
-      <div className="card mt-4">
+      <Card variant="glass" padded className="mt-4">
         <div className="flex gap-2">
           <input
-            className="input"
+            className="glass-input"
             placeholder="写评论..."
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitComment()}
           />
-          <button className="btn-primary" onClick={submitComment} disabled={!text.trim()}>
+          <Button variant="filled" tone="accent" onClick={submitComment} disabled={!text.trim()} icon={<Send size={16} />} aria-label="发送">
             发送
-          </button>
+          </Button>
         </div>
-        <div className="mt-4">
+        <div className="mt-4 divide-y divide-ink-100/60">
           {commentsData?.items.map((tree) => (
-            <div key={tree.root.id} className="border-b border-slate-50 last:border-0">
+            <div key={tree.root.id}>
               <CommentItem comment={tree.root} postId={id!} />
               {tree.replies.map((reply) => (
                 <CommentItem key={reply.id} comment={reply} postId={id!} />
@@ -53,10 +55,10 @@ export default function PostDetailPage() {
             </div>
           ))}
           {commentsData && commentsData.items.length === 0 && (
-            <p className="text-center text-slate-400 py-4">还没有评论，来说点什么吧</p>
+            <p className="text-center text-ink-400 py-4">还没有评论，来说点什么吧</p>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

@@ -1,18 +1,14 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Heart, CornerUpRight, Send } from 'lucide-react'
+import { Button } from 'liquidify-react'
 import type { Comment } from '@/api/types'
 import { Avatar } from './Avatar'
 import { formatTime } from '@/utils'
 import { commentApi } from '@/api'
-import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
-export function CommentItem({
-  comment,
-  postId,
-}: {
-  comment: Comment
-  postId: string
-}) {
+export function CommentItem({ comment, postId }: { comment: Comment; postId: string }) {
   const [liked, setLiked] = useState(comment.liked)
   const [likeCount, setLikeCount] = useState(comment.like_count)
   const [showReply, setShowReply] = useState(false)
@@ -22,22 +18,25 @@ export function CommentItem({
   const toggleLike = async () => {
     if (liked) {
       await commentApi.unlike(comment.id)
-      setLiked(false); setLikeCount((c) => c - 1)
+      setLiked(false)
+      setLikeCount((c) => c - 1)
     } else {
       await commentApi.like(comment.id)
-      setLiked(true); setLikeCount((c) => c + 1)
+      setLiked(true)
+      setLikeCount((c) => c + 1)
     }
   }
 
   const submitReply = async () => {
     if (!replyText.trim()) return
     await commentApi.reply(comment.id, { content: replyText, reply_to_user_id: comment.user.id })
-    setReplyText(''); setShowReply(false)
+    setReplyText('')
+    setShowReply(false)
     qc.invalidateQueries({ queryKey: ['comments', postId] })
   }
 
   if (comment.deleted) {
-    return <div className="text-slate-400 text-sm py-1">该评论已删除</div>
+    return <div className="text-ink-400 text-sm py-1">该评论已删除</div>
   }
 
   return (
@@ -46,35 +45,51 @@ export function CommentItem({
         <Avatar user={comment.user} size={28} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <Link to={`/u/${comment.user.username}`} className="text-sm font-medium text-slate-700 hover:text-brand-600">
+            <Link to={`/u/${comment.user.username}`} className="text-sm font-medium text-ink-800 hover:text-accent transition-colors">
               {comment.user.display_name || comment.user.username}
             </Link>
             {comment.reply_to_user && comment.reply_to_user.id !== comment.user.id && (
-              <span className="text-xs text-slate-400">
-                回复 @{comment.reply_to_user.display_name || comment.reply_to_user.username}
+              <span className="text-xs text-ink-400 inline-flex items-center gap-0.5">
+                <CornerUpRight size={11} /> {comment.reply_to_user.display_name || comment.reply_to_user.username}
               </span>
             )}
-            <span className="text-xs text-slate-400">{formatTime(comment.created_at)}</span>
+            <span className="text-xs text-ink-400">{formatTime(comment.created_at)}</span>
           </div>
-          <p className="text-sm text-slate-600 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
-          <div className="flex items-center gap-3 mt-1 text-xs">
-            <button onClick={toggleLike} className={liked ? 'text-red-500' : 'text-slate-400'}>
-              ♡ {likeCount}
-            </button>
-            <button onClick={() => setShowReply(!showReply)} className="text-slate-400 hover:text-brand-600">
+          <p className="text-sm text-ink-800 mt-0.5 leading-relaxed whitespace-pre-wrap break-words">{comment.content}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Button
+              variant="plain"
+              tone={liked ? 'destructive' : 'neutral'}
+              size="compact"
+              onClick={toggleLike}
+              icon={<Heart size={13} fill={liked ? 'currentColor' : 'none'} />}
+              aria-label="点赞"
+              className="!text-xs"
+            >
+              {likeCount}
+            </Button>
+            <Button
+              variant="plain"
+              tone="neutral"
+              size="compact"
+              onClick={() => setShowReply(!showReply)}
+              className="!text-xs"
+            >
               回复
-            </button>
+            </Button>
           </div>
           {showReply && (
             <div className="mt-2 flex gap-2">
               <input
-                className="input text-sm"
+                className="glass-input text-sm"
                 placeholder={`回复 @${comment.user.display_name || comment.user.username}`}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submitReply()}
               />
-              <button className="btn-primary text-sm" onClick={submitReply}>发送</button>
+              <Button variant="filled" tone="accent" size="compact" onClick={submitReply} icon={<Send size={15} />} aria-label="发送">
+                发送
+              </Button>
             </div>
           )}
         </div>

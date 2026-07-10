@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Button, Card } from 'liquidify-react'
 import { authApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 
@@ -13,32 +14,42 @@ export default function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(''); setLoading(true)
+    setError('')
+    setLoading(true)
     try {
       const res = await authApi.login({ username, password })
       setAuth(res.user, res.access_token)
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.detail || '登录失败')
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="card w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center text-brand-600 mb-6">登录 Moment</h1>
+      <Card variant="glass" padded className="w-full max-w-sm">
+        <h1 className="text-2xl font-bold text-center text-ink-800 mb-1 tracking-tight">登录 Moment</h1>
+        <p className="text-center text-sm text-ink-400 mb-6">欢迎回来</p>
         <form onSubmit={submit} className="space-y-3">
-          <input className="input" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <input className="input" type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="glass-input" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input
+            className="glass-input"
+            type="password"
+            placeholder="密码"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          <Button type="submit" variant="filled" tone="accent" className="w-full" disabled={loading} loading={loading}>
             {loading ? '登录中...' : '登录'}
-          </button>
+          </Button>
         </form>
-        <p className="text-center text-sm text-slate-400 mt-4">
-          没有账号？<Link to="/register" className="text-brand-600">注册</Link>
+        <p className="text-center text-sm text-ink-400 mt-4">
+          没有账号？<Link to="/register" className="text-accent font-medium">注册</Link>
         </p>
-      </div>
+      </Card>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import { Heart, MessageCircle, Trash2, Lock } from 'lucide-react'
+import { Card, Badge, Button } from 'liquidify-react'
 import type { Post } from '@/api/types'
 import { postApi } from '@/api'
 import { useQueryClient } from '@tanstack/react-query'
@@ -18,10 +20,12 @@ export function PostCard({ post, onDelete }: { post: Post; onDelete?: () => void
   const toggleLike = async () => {
     if (liked) {
       await postApi.unlike(post.id)
-      setLiked(false); setLikeCount((c) => c - 1)
+      setLiked(false)
+      setLikeCount((c) => c - 1)
     } else {
       await postApi.like(post.id)
-      setLiked(true); setLikeCount((c) => c + 1)
+      setLiked(true)
+      setLikeCount((c) => c + 1)
     }
   }
 
@@ -33,34 +37,55 @@ export function PostCard({ post, onDelete }: { post: Post; onDelete?: () => void
   }
 
   return (
-    <div className="card mb-4">
+    <Card variant="glass" padded className="mb-4">
       <div className="flex items-start gap-3">
         <Avatar user={post.user} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <Link to={`/u/${post.user.username}`} className="font-medium text-slate-800 hover:text-brand-600">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link to={`/u/${post.user.username}`} className="font-semibold text-ink-800 hover:text-accent transition-colors">
               {post.user.display_name || post.user.username}
             </Link>
-            <span className="text-xs text-slate-400">{formatTime(post.created_at)}</span>
-            {post.visibility === 'friends' && <span className="text-xs text-amber-600">仅好友可见</span>}
+            <span className="text-xs text-ink-400">{formatTime(post.created_at)}</span>
+            {post.visibility === 'friends' && (
+              <Badge tone="neutral" className="inline-flex items-center gap-1">
+                <Lock size={10} /> 仅好友
+              </Badge>
+            )}
           </div>
           {post.content && (
-            <p className="mt-2 text-slate-700 whitespace-pre-wrap break-words">{post.content}</p>
+            <p className="mt-2 text-ink-800 leading-relaxed whitespace-pre-wrap break-words">{post.content}</p>
           )}
           <MediaGrid media={post.media} />
-          <div className="flex items-center gap-4 mt-3 text-sm">
-            <button onClick={toggleLike} className={`flex items-center gap-1 ${liked ? 'text-red-500' : 'text-slate-500'}`}>
-              {liked ? '❤' : '♡'} {likeCount}
-            </button>
-            <Link to={`/post/${post.id}`} className="text-slate-500 hover:text-brand-600">
-              💬 {post.comment_count}
+          <div className="flex items-center gap-3 mt-3">
+            <Button
+              variant="plain"
+              tone={liked ? 'destructive' : 'neutral'}
+              size="compact"
+              onClick={toggleLike}
+              icon={<Heart size={16} fill={liked ? 'currentColor' : 'none'} />}
+              aria-label="点赞"
+            >
+              {likeCount}
+            </Button>
+            <Link to={`/post/${post.id}`}>
+              <Button variant="plain" tone="neutral" size="compact" icon={<MessageCircle size={16} />} aria-label="评论">
+                {post.comment_count}
+              </Button>
             </Link>
             {isOwner && onDelete && (
-              <button onClick={handleDelete} className="text-slate-400 hover:text-red-500 ml-auto">删除</button>
+              <Button
+                variant="plain"
+                tone="neutral"
+                size="compact"
+                onClick={handleDelete}
+                icon={<Trash2 size={16} />}
+                aria-label="删除"
+                className="ml-auto text-ink-400 hover:text-red-500"
+              />
             )}
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
