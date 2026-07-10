@@ -31,6 +31,7 @@ data/
 # ===== 编辑器/系统 =====
 .vscode/
 .idea/
+.kilo/
 .DS_Store
 Thumbs.db
 
