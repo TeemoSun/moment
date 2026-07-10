@@ -30,6 +30,9 @@ async def lifespan(app: FastAPI):
         ensure_self_signed_cert(cert, key)
     await init_db()
     logger.info("Database initialized")
+    from app.database import AsyncSessionLocal
+    from app.services.seed_service import ensure_initial_admin
+    await ensure_initial_admin(AsyncSessionLocal)
     yield
     logger.info("Shutting down")
 

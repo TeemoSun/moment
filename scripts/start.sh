@@ -3,9 +3,30 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Ensure uv is on PATH (common install locations)
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+
+# Auto-create .env with a generated JWT_SECRET if missing
+if [ ! -f "$ROOT/.env" ]; then
+  echo ">> No .env found, creating one with a generated JWT_SECRET..."
+  cp "$ROOT/.env.example" "$ROOT/.env"
+  SECRET=$(openssl rand -hex 32)
+  if grep -q "^JWT_SECRET=" "$ROOT/.env"; then
+    sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${SECRET}|" "$ROOT/.env"
+  else
+    echo "JWT_SECRET=${SECRET}" >> "$ROOT/.env"
+  fi
+fi
+
 # load .env if present
 if [ -f "$ROOT/.env" ]; then
   set -a; . "$ROOT/.env"; set +a
+fi
+
+# Verify JWT_SECRET is set
+if [ -z "${JWT_SECRET:-}" ]; then
+  echo "ERROR: JWT_SECRET is not set. Add it to .env" >&2
+  exit 1
 fi
 
 export APP_ENV="${APP_ENV:-production}"

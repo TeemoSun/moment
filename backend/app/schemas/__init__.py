@@ -44,6 +44,11 @@ class UserUpdate(BaseModel):
     bio: str | None = Field(default=None, max_length=500)
 
 
+class PasswordChange(BaseModel):
+    old_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class RegisterIn(BaseModel):
     invite_code: str = Field(min_length=4, max_length=64)
     username: str = Field(min_length=3, max_length=32)

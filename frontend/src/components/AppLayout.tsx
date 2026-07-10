@@ -27,6 +27,7 @@ export function AppLayout() {
                 <Link to={`/u/${user.username}`} className="text-slate-600 hover:text-brand-600">
                   {user.display_name || user.username}
                 </Link>
+                <Link to="/settings" className="text-slate-600 hover:text-brand-600">设置</Link>
                 <button onClick={handleLogout} className="btn-ghost text-sm">退出</button>
               </div>
             )}

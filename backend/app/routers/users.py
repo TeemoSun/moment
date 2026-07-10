@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import Media, User
-from app.schemas import MessageOut, UserBrief, UserOut, UserUpdate
+from app.schemas import MessageOut, PasswordChange, UserBrief, UserOut, UserUpdate
+from app.security import hash_password, verify_password
 from app.services.media_service import save_user_avatar
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -53,6 +54,21 @@ async def upload_avatar(
     user.avatar_media_id = media.id
     await db.flush()
     return _user_out(user)
+
+
+@router.post("/me/password", response_model=MessageOut)
+async def change_password(
+    body: PasswordChange,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.old_password, user.password_hash):
+        raise HTTPException(400, "旧密码错误")
+    if body.old_password == body.new_password:
+        raise HTTPException(400, "新密码不能与旧密码相同")
+    user.password_hash = hash_password(body.new_password)
+    await db.flush()
+    return MessageOut(message="密码修改成功")
 
 
 @router.get("/{user_id}", response_model=UserOut)

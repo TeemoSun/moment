@@ -10,7 +10,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     APP_ENV: str = "production"
     APP_HOST: str = "0.0.0.0"
@@ -23,6 +27,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # Initial admin (auto-seeded on first startup, admin should change password after login)
+    INIT_ADMIN_PASSWORD: str = "admin123456"
+    INIT_ADMIN_INVITE_CODE: str = "WELCOME01"
 
     MAX_IMAGE_SIZE_MB: int = 50
     MAX_VIDEO_SIZE_MB: int = 200

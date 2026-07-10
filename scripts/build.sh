@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 echo ">> Building frontend..."
 cd "$ROOT/frontend"

@@ -11,6 +11,7 @@ import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import FriendsPage from './pages/FriendsPage'
 import ComposePage from './pages/ComposePage'
+import SettingsPage from './pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/u/:username" element={<ProfilePage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/compose" element={<ComposePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

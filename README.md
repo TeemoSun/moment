@@ -15,48 +15,26 @@
 
 ## 快速开始
 
-### 首次运行
+### 快速运行
 
 ```bash
-# 1. 复制环境变量配置
-cp .env.example .env
-
-# 2. 生成 JWT_SECRET
-echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
-
-# 3. 一键启动（自动安装依赖、构建前端、生成证书、启动 HTTPS 服务）
+# 一键启动（自动创建 .env、生成 JWT_SECRET、构建前端、启动 HTTPS 服务）
 bash scripts/start.sh
 ```
 
 服务启动后访问 `https://localhost:8443`。
 
-### 创建管理员与邀请码
+### 初始管理员
 
-首次使用需手动创建管理员账号（需有邀请码才能注册）：
+首次启动会自动创建管理员账号和邀请码（无需手动操作）：
 
-```bash
-cd backend
-uv run python -c "
-import asyncio
-from app.database import AsyncSessionLocal, init_db
-from app.models import User, InviteCode
-from app.security import hash_password
+- **用户名**：`admin`
+- **初始密码**：`admin123456`（可在 `.env` 中通过 `INIT_ADMIN_PASSWORD` 自定义）
+- **邀请码**：`WELCOME01`（可在 `.env` 中通过 `INIT_ADMIN_INVITE_CODE` 自定义）
 
-async def seed():
-    await init_db()
-    async with AsyncSessionLocal() as db:
-        u = User(username='admin', email='admin@example.com',
-                 password_hash=hash_password('your-password'), is_admin=True)
-        db.add(u); await db.flush()
-        c = InviteCode(code='WELCOME01', created_by=u.id, max_uses=100)
-        db.add(c); await db.commit()
-        print('Done: admin / WELCOME01')
+登录后请立即在「设置 - 修改密码」中修改初始密码。
 
-asyncio.run(seed())
-"
-```
-
-然后用 `WELCOME01` 邀请码注册新用户。
+用邀请码 `WELCOME01` 即可注册新用户。
 
 ### 日常启动
 

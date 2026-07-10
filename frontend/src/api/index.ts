@@ -16,6 +16,8 @@ export const userApi = {
     fd.append('file', file)
     return api.post<User>('/api/users/me/avatar', fd).then((r) => r.data)
   },
+  changePassword: (oldPassword: string, newPassword: string) =>
+    api.post('/api/users/me/password', { old_password: oldPassword, new_password: newPassword }).then((r) => r.data),
   get: (id: string) => api.get<User>(`/api/users/${id}`).then((r) => r.data),
   getByUsername: (username: string) => api.get<User>(`/api/users/by-username/${username}`).then((r) => r.data),
 }
