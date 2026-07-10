@@ -1,0 +1,40 @@
+# ===== Python / uv =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# ===== Node / Frontend =====
+node_modules/
+frontend/dist/
+backend/app/static/
+
+# ===== 可变数据目录（Docker 卷映射） =====
+data/
+
+# ===== 自签证书与密钥 =====
+*.pem
+*.key
+*.crt
+*.p12
+
+# ===== 环境与密钥 =====
+.env
+.env.*
+!.env.example
+
+# ===== 日志 =====
+*.log
+
+# ===== 编辑器/系统 =====
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ===== 测试/覆盖率 =====
+.pytest_cache/
+.coverage
+htmlcov/
