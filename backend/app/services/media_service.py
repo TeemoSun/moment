@@ -26,7 +26,6 @@ def _bucket_dir() -> Path:
 async def _read_head(file: UploadFile, n: int = 262144) -> bytes:
     await file.seek(0)
     head = await file.read(n)
-    await file.seek(0)
     return head
 
 

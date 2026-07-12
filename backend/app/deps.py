@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models import User
-from app.security import decode_access_token
+from app.security import decode_access_token, decode_media_token
 
 settings = get_settings()
 
@@ -19,6 +17,16 @@ CREDENTIALS_ERROR = HTTPException(
     detail="Could not validate credentials",
     headers={"WWW-Authenticate": "Bearer"},
 )
+
+MEDIA_COOKIE = "media_token"
+
+
+async def _resolve_user(db: AsyncSession, user_id: str) -> User | None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        return None
+    return user
 
 
 async def get_current_user(
@@ -35,11 +43,44 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise CREDENTIALS_ERROR
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    user = await _resolve_user(db, user_id)
+    if user is None:
         raise CREDENTIALS_ERROR
     return user
+
+
+async def get_current_user_for_media(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Auth dependency for media endpoints.
+
+    Accepts either the Bearer access token (for API calls) or the
+    ``media_token`` cookie (for browser-native <img>/<video> requests that
+    cannot send custom headers).
+    """
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth.removeprefix("Bearer ").strip()
+        payload = decode_access_token(token)
+        if payload is not None:
+            user_id = payload.get("sub")
+            if user_id:
+                user = await _resolve_user(db, user_id)
+                if user is not None:
+                    return user
+
+    cookie_token = request.cookies.get(MEDIA_COOKIE)
+    if cookie_token:
+        payload = decode_media_token(cookie_token)
+        if payload is not None:
+            user_id = payload.get("sub")
+            if user_id:
+                user = await _resolve_user(db, user_id)
+                if user is not None:
+                    return user
+
+    raise CREDENTIALS_ERROR
 
 
 async def get_admin_user(user: User = Depends(get_current_user)) -> User:

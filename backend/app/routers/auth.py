@@ -18,8 +18,8 @@ from app.schemas import (
     InviteCodeOut, LoginIn, MessageOut, RefreshOut, RegisterIn, TokenOut, UserOut,
 )
 from app.security import (
-    create_access_token, create_refresh_token, decode_refresh_token,
-    hash_password, verify_password,
+    create_access_token, create_media_token, create_refresh_token,
+    decode_refresh_token, hash_password, verify_password,
 )
 
 settings = get_settings()
@@ -27,6 +27,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE = "refresh_token"
 REFRESH_PATH = "/api/auth/refresh"
+MEDIA_COOKIE = "media_token"
+MEDIA_PATH = "/api/media"
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
@@ -41,8 +43,24 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
     )
 
 
+def _set_media_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=MEDIA_COOKIE,
+        value=token,
+        max_age=settings.MEDIA_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=not settings.is_dev,
+        samesite="lax",
+        path=MEDIA_PATH,
+    )
+
+
 def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(REFRESH_COOKIE, path=REFRESH_PATH)
+
+
+def _clear_media_cookie(response: Response) -> None:
+    response.delete_cookie(MEDIA_COOKIE, path=MEDIA_PATH)
 
 
 def _avatar_url(user: User) -> str | None:
@@ -102,6 +120,7 @@ async def register(
     access = create_access_token(user.id, user.is_admin)
     refresh = create_refresh_token(user.id)
     _set_refresh_cookie(response, refresh)
+    _set_media_cookie(response, create_media_token(user.id))
     return TokenOut(access_token=access, token_type="bearer", user=_user_out(user))
 
 
@@ -125,6 +144,7 @@ async def login(
     access = create_access_token(user.id, user.is_admin)
     refresh = create_refresh_token(user.id)
     _set_refresh_cookie(response, refresh)
+    _set_media_cookie(response, create_media_token(user.id))
     return TokenOut(access_token=access, token_type="bearer", user=_user_out(user))
 
 
@@ -143,12 +163,14 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
         raise HTTPException(401, "User not found")
 
     new_access = create_access_token(user.id, user.is_admin)
+    _set_media_cookie(response, create_media_token(user.id))
     return RefreshOut(access_token=new_access, token_type="bearer")
 
 
 @router.post("/logout", response_model=MessageOut)
 async def logout(response: Response):
     _clear_refresh_cookie(response)
+    _clear_media_cookie(response)
     return MessageOut(message="Logged out")
 
 
