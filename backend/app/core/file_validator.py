@@ -6,7 +6,7 @@ from PIL import Image
 from app.logging_conf import logger
 
 
-IMAGE_ALLOWED = {"jpeg", "png", "webp", "gif"}
+IMAGE_ALLOWED = {"jpg", "jpeg", "png", "webp", "gif"}
 VIDEO_ALLOWED = {"mp4", "webm"}
 EXECUTABLE_BLOCKED = {
     "exe", "elf", "pe", "dll", "so", "dylib", "com",

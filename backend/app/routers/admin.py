@@ -60,7 +60,7 @@ async def list_users(
     items = [
         UserBrief(
             id=u.id, username=u.username, display_name=u.display_name,
-            avatar_url=f"/api/media/avatar/{u.id}" if u.avatar_media_id else None,
+            avatar_url=f"/api/media/avatar/{u.id}?v={u.avatar_media_id}" if u.avatar_media_id else None,
         )
         for u in users
     ]

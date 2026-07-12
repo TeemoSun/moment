@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,7 +52,29 @@ async def upload_media(
     return _media_out(media)
 
 
-@router.get("/avatar/{user_id}", response_class=FileResponse)
+_DEFAULT_AVATAR_COLORS = [
+    ("#e5e5ea", "#8e8e93"),
+    ("#dbeafe", "#3b82f6"),
+    ("#ede9fe", "#7c3aed"),
+    ("#fce7f3", "#db2777"),
+    ("#d1fae5", "#059669"),
+    ("#fef3c7", "#d97706"),
+]
+
+
+def _default_avatar_svg(name: str) -> str:
+    initial = xml_escape((name[:1] or "?").upper())
+    color_idx = sum(ord(c) for c in name) % len(_DEFAULT_AVATAR_COLORS)
+    bg, fg = _DEFAULT_AVATAR_COLORS[color_idx]
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">'
+        f'<rect fill="{bg}" width="200" height="200" rx="100"/>'
+        f'<text x="50%" y="50%" font-size="80" text-anchor="middle" dy=".35em" '
+        f'fill="{fg}" font-family="-apple-system,system-ui,sans-serif">{initial}</text></svg>'
+    )
+
+
+@router.get("/avatar/{user_id}")
 async def get_avatar(
     user_id: str,
     user: User = Depends(get_current_user_for_media),
@@ -60,17 +83,22 @@ async def get_avatar(
     other = await db.get(User, user_id)
     if other is None:
         raise HTTPException(404, "User not found")
-    if not other.avatar_media_id:
-        raise HTTPException(404, "No avatar")
-    media = await db.get(Media, other.avatar_media_id)
-    if media is None:
-        raise HTTPException(404, "Avatar media missing")
-    path = resolve_media_path(media, "medium")
-    if not path.exists():
-        path = resolve_media_path(media, "original")
-    if not path.exists():
-        raise HTTPException(404, "Avatar file missing")
-    return FileResponse(path, headers={"Cache-Control": "public, max-age=3600"})
+
+    if other.avatar_media_id:
+        media = await db.get(Media, other.avatar_media_id)
+        if media is not None:
+            path = resolve_media_path(media, "medium")
+            if not path.exists():
+                path = resolve_media_path(media, "original")
+            if path.exists():
+                return FileResponse(path, headers={"Cache-Control": "public, max-age=3600"})
+
+    svg = _default_avatar_svg(other.display_name or other.username)
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=60"},
+    )
 
 
 @router.get("/{media_id}/{variant}", response_class=FileResponse)

@@ -18,7 +18,7 @@ def _user_brief(user: User):
     from app.schemas import UserBrief
     return UserBrief(
         id=user.id, username=user.username, display_name=user.display_name,
-        avatar_url=f"/api/media/avatar/{user.id}" if user.avatar_media_id else None,
+        avatar_url=f"/api/media/avatar/{user.id}?v={user.avatar_media_id}" if user.avatar_media_id else None,
     )
 
 

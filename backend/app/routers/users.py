@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def _avatar_url(user: User) -> str | None:
-    return f"/api/media/avatar/{user.id}" if user.avatar_media_id else None
+    return f"/api/media/avatar/{user.id}?v={user.avatar_media_id}" if user.avatar_media_id else None
 
 
 def _user_out(user: User) -> UserOut:

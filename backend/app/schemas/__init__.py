@@ -21,6 +21,7 @@ class TokenOut(BaseModel):
 class RefreshOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: "UserOut"
 
 
 class UserOut(ORMModel):
@@ -174,5 +175,6 @@ class MessageOut(BaseModel):
 
 
 TokenOut.model_rebuild()
+RefreshOut.model_rebuild()
 PostOut.model_rebuild()
 PostDetailOut.model_rebuild()

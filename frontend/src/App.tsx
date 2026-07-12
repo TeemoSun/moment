@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuthStore } from './stores/auth'
-import { userApi } from './api'
-import { getAccessToken } from './api/client'
+import { getAccessToken, refreshSession, setRestoringDone } from './api/client'
 import { AppLayout } from './components/AppLayout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -13,9 +12,10 @@ import FriendsPage from './pages/FriendsPage'
 import ComposePage from './pages/ComposePage'
 import SettingsPage from './pages/SettingsPage'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, restoring }: { children: React.ReactNode; restoring: boolean }) {
   const user = useAuthStore((s) => s.user)
   const token = getAccessToken()
+  if (restoring) return null
   if (!user || !token) return <Navigate to="/login" replace />
   return <>{children}</>
 }
@@ -24,13 +24,31 @@ export default function App() {
   const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
   const logout = useAuthStore((s) => s.logout)
-  const token = getAccessToken()
+  const [restoring, setRestoring] = useState(true)
 
   useEffect(() => {
-    if (token && !useAuthStore.getState().user) {
-      userApi.me().then((u) => setAuth(u, token!)).catch(() => logout())
+    const existingToken = getAccessToken()
+    if (existingToken && useAuthStore.getState().user) {
+      setRestoringDone()
+      setRestoring(false)
+      return
     }
-  }, [token, setAuth, logout])
+    refreshSession()
+      .then((result) => {
+        if (!result) {
+          logout()
+          return
+        }
+        setAuth(result.user, result.token)
+      })
+      .catch(() => logout())
+      .finally(() => {
+        setRestoringDone()
+        setRestoring(false)
+      })
+  }, [setAuth, logout])
+
+  if (restoring) return null
 
   if ((location.pathname === '/login' || location.pathname === '/register') && useAuthStore.getState().user) {
     return <Navigate to="/" replace />
@@ -40,7 +58,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      <Route element={<ProtectedRoute restoring={restoring}><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<FeedPage />} />
         <Route path="/post/:id" element={<PostDetailPage />} />
         <Route path="/u/:username" element={<ProfilePage />} />

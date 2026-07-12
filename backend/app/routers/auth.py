@@ -64,7 +64,7 @@ def _clear_media_cookie(response: Response) -> None:
 
 
 def _avatar_url(user: User) -> str | None:
-    return f"/api/media/avatar/{user.id}" if user.avatar_media_id else None
+    return f"/api/media/avatar/{user.id}?v={user.avatar_media_id}" if user.avatar_media_id else None
 
 
 def _user_out(user: User) -> UserOut:
@@ -163,8 +163,10 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
         raise HTTPException(401, "User not found")
 
     new_access = create_access_token(user.id, user.is_admin)
+    new_refresh = create_refresh_token(user.id)
+    _set_refresh_cookie(response, new_refresh)
     _set_media_cookie(response, create_media_token(user.id))
-    return RefreshOut(access_token=new_access, token_type="bearer")
+    return RefreshOut(access_token=new_access, token_type="bearer", user=_user_out(user))
 
 
 @router.post("/logout", response_model=MessageOut)

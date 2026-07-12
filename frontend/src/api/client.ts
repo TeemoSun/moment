@@ -1,9 +1,11 @@
 import axios from 'axios'
+import type { User } from './types'
 
 const api = axios.create({ baseURL: '/', withCredentials: true })
 
 let accessToken: string | null = null
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<{ token: string; user: User } | null> | null = null
+let restoring = true
 
 export function setAccessToken(token: string | null) {
   accessToken = token
@@ -13,16 +15,29 @@ export function getAccessToken() {
   return accessToken
 }
 
-async function doRefresh(): Promise<string | null> {
+export function setRestoringDone() {
+  restoring = false
+}
+
+async function doRefresh(): Promise<{ token: string; user: User } | null> {
   try {
     const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true })
-    const token = (res.data as { access_token: string }).access_token
-    setAccessToken(token)
-    return token
+    const data = res.data as { access_token: string; user: User }
+    setAccessToken(data.access_token)
+    return { token: data.access_token, user: data.user }
   } catch {
     setAccessToken(null)
     return null
   }
+}
+
+export function refreshSession(): Promise<{ token: string; user: User } | null> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => {
+      refreshPromise = null
+    })
+  }
+  return refreshPromise
 }
 
 api.interceptors.request.use((config) => {
@@ -42,15 +57,15 @@ api.interceptors.response.use(
       !original.url.includes('/api/auth/')
     ) {
       original._retry = true
-      if (!refreshPromise) refreshPromise = doRefresh()
-      const token = await refreshPromise
-      refreshPromise = null
-      if (token) {
-        original.headers.Authorization = `Bearer ${token}`
+      const result = await refreshSession()
+      if (result) {
+        original.headers.Authorization = `Bearer ${result.token}`
         return api(original)
       }
       setAccessToken(null)
-      window.location.href = '/login'
+      if (!restoring) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },

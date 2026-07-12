@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Check } from 'lucide-react'
+import { ChevronLeft, Check, Camera } from 'lucide-react'
 import { Button, Card } from 'liquidify-react'
 import { userApi } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { Avatar } from '@/components/Avatar'
 
 export default function SettingsPage() {
   const [displayName, setDisplayName] = useState('')
@@ -12,11 +13,15 @@ export default function SettingsPage() {
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [profileMsg, setProfileMsg] = useState('')
+  const [avatarMsg, setAvatarMsg] = useState('')
+  const [avatarError, setAvatarError] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [pwdMsg, setPwdMsg] = useState('')
   const [pwdError, setPwdError] = useState('')
   const user = useAuthStore((s) => s.user)
   const updateUser = useAuthStore((s) => s.updateUser)
   const navigate = useNavigate()
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const saveProfile = async () => {
     setProfileMsg('')
@@ -29,6 +34,24 @@ export default function SettingsPage() {
       setProfileMsg('资料已保存')
     } catch (err: any) {
       setProfileMsg(err.response?.data?.detail || '保存失败')
+    }
+  }
+
+  const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarError('')
+    setAvatarMsg('')
+    setAvatarUploading(true)
+    try {
+      const updated = await userApi.uploadAvatar(file)
+      updateUser(updated)
+      setAvatarMsg('头像已更新')
+    } catch (err: any) {
+      setAvatarError(err.response?.data?.detail || '头像上传失败')
+    } finally {
+      setAvatarUploading(false)
     }
   }
 
@@ -64,6 +87,22 @@ export default function SettingsPage() {
       {user && (
         <Card variant="glass" padded className="mb-4">
           <h2 className="font-semibold text-ink-800 mb-3">个人资料</h2>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative group cursor-pointer" onClick={() => fileRef.current?.click()}>
+              <Avatar user={user} size={64} />
+              <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={20} className="text-white" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button variant="filled" tone="accent" size="compact" onClick={() => fileRef.current?.click()} disabled={avatarUploading}>
+                {avatarUploading ? '上传中...' : '更换头像'}
+              </Button>
+              {avatarMsg && <p className="text-sm text-accent flex items-center gap-1"><Check size={14} /> {avatarMsg}</p>}
+              {avatarError && <p className="text-sm text-red-500">{avatarError}</p>}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
+          </div>
           <label className="text-sm text-ink-400">昵称</label>
           <input
             className="glass-input mt-1 mb-3"
