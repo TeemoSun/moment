@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, system, users
+from app.api.v1 import auth, media, system, users
 
 router = APIRouter()
 router.include_router(system.router, prefix="/system", tags=["system"])
 router.include_router(auth.router, prefix="/auth", tags=["auth"])
 router.include_router(users.router, tags=["users"])
+router.include_router(media.router, tags=["media"])

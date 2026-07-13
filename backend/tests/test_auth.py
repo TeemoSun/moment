@@ -23,7 +23,9 @@ def _get_public_key(client: TestClient) -> str:
     return resp.json()["public_key"]
 
 
-def _init_system(client: TestClient, email: str = "admin@test.com", nickname: str = "Admin") -> dict:
+def _init_system(
+    client: TestClient, email: str = "admin@test.com", nickname: str = "Admin"
+) -> dict:
     pub = _get_public_key(client)
     enc = _rsa_encrypt(pub, "TestPass123!")
     resp = client.post(
@@ -99,7 +101,7 @@ def test_login_lock_after_5_failures(client: TestClient) -> None:
 
     for i in range(4):
         resp = client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
-        assert resp.status_code == 401, f"attempt {i+1}"
+        assert resp.status_code == 401, f"attempt {i + 1}"
 
     resp = client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
     assert resp.status_code == 403
@@ -161,7 +163,10 @@ def test_change_password(client: TestClient) -> None:
     client.post("/api/v1/auth/logout", headers={"X-CSRF-Token": csrf})
 
     new_login_enc = _rsa_encrypt(pub, "NewPass456!")
-    resp = client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": new_login_enc})
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@test.com", "password": new_login_enc},
+    )
     assert resp.status_code == 200
 
 
@@ -213,8 +218,9 @@ def test_avatar_upload_and_access(client: TestClient) -> None:
 
     csrf = client.cookies.get("moments_csrf")
 
-    from PIL import Image
     import io
+
+    from PIL import Image
 
     img = Image.new("RGB", (100, 100), color="red")
     buf = io.BytesIO()

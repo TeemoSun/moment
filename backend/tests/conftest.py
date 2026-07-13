@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 from pathlib import Path
 
@@ -18,6 +17,7 @@ def _override_db_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db_url = f"sqlite:///{db_file}"
     monkeypatch.setenv("DB_URL", db_url)
     monkeypatch.setenv("SKIP_ALEMBIC", "1")
+    monkeypatch.setenv("STORAGE_ROOT", str(tmp_path / "storage"))
 
     import app.config as cfg
 
