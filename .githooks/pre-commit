@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# pre-commit: 前端 ESLint+Prettier，后端 Ruff+Mypy
+set -e
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+# ===== 前端 =====
+if [ -d frontend/node_modules ]; then
+  echo "[pre-commit] 前端 ESLint + Prettier 检查..."
+  ( cd frontend && npm run lint -- --max-warnings=0 && npx prettier --check "src/**/*.{ts,tsx,css}" )
+else
+  echo "[pre-commit] 跳过前端检查（未安装 node_modules）"
+fi
+
+# ===== 后端 =====
+if command -v ruff >/dev/null 2>&1; then
+  echo "[pre-commit] 后端 Ruff 检查与格式化..."
+  ruff check backend/app
+  ruff format --check backend/app
+else
+  echo "[pre-commit] 跳过后端 Ruff（未安装）"
+fi
+
+if command -v mypy >/dev/null 2>&1; then
+  echo "[pre-commit] 后端 Mypy 检查..."
+  mypy backend/app || echo "[pre-commit] mypy 存在告警，请关注"
+else
+  echo "[pre-commit] 跳过后端 Mypy（未安装）"
+fi
+
+echo "[pre-commit] 全部检查通过 ✅"

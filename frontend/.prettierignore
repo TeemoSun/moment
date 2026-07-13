@@ -1,0 +1,4 @@
+dist
+node_modules
+*.umd.js
+*.umd.js.map
