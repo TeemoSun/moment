@@ -14,19 +14,12 @@ else
 fi
 
 # ===== 后端 =====
-if command -v ruff >/dev/null 2>&1; then
-  echo "[pre-commit] 后端 Ruff 检查与格式化..."
-  ruff check backend/app
-  ruff format --check backend/app
-else
-  echo "[pre-commit] 跳过后端 Ruff（未安装）"
-fi
+echo "[pre-commit] 后端 Ruff 检查与格式化..."
+( cd "$ROOT/backend" && uv run ruff check app )
+( cd "$ROOT/backend" && uv run ruff format --check app )
+( cd "$ROOT/backend" && uv run ruff format --check alembic )
 
-if command -v mypy >/dev/null 2>&1; then
-  echo "[pre-commit] 后端 Mypy 检查..."
-  mypy backend/app || echo "[pre-commit] mypy 存在告警，请关注"
-else
-  echo "[pre-commit] 跳过后端 Mypy（未安装）"
-fi
+echo "[pre-commit] 后端 Mypy 检查..."
+( cd "$ROOT/backend" && uv run mypy app )
 
 echo "[pre-commit] 全部检查通过 ✅"

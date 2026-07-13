@@ -15,20 +15,43 @@ cleanup() {
       kill "$pid" 2>/dev/null || true
     fi
   done
-  # 杀掉子进程组
   wait 2>/dev/null || true
   echo "[dev] 已全部退出"
 }
 trap cleanup SIGINT SIGTERM EXIT
 
+# ===== 读取 .env 配置 =====
+BACKEND_HOST="127.0.0.1"
+BACKEND_PORT="8000"
+if [ -f "$ROOT/.env" ]; then
+  while IFS='=' read -r key value; do
+    key="$(echo "$key" | xargs)"
+    value="$(echo "$value" | xargs)"
+    case "$key" in
+      BACKEND_HOST) BACKEND_HOST="$value" ;;
+      BACKEND_PORT) BACKEND_PORT="$value" ;;
+    esac
+  done < <(grep -v '^#' "$ROOT/.env" | grep -v '^$')
+fi
+
+export VITE_BACKEND_PORT="$BACKEND_PORT"
+
 # ===== 后端 =====
-echo "[dev] 启动后端 uvicorn (reload)..."
+echo "[dev] 安装后端依赖..."
 (
   cd "$ROOT/backend"
   if command -v uv >/dev/null 2>&1; then
-    uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+    uv sync --dev
+  fi
+)
+
+echo "[dev] 启动后端 uvicorn (reload) on ${BACKEND_HOST}:${BACKEND_PORT}..."
+(
+  cd "$ROOT/backend"
+  if command -v uv >/dev/null 2>&1; then
+    uv run uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT"
   else
-    python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+    python -m uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT"
   fi
 ) &
 PIDS+=($!)
@@ -45,7 +68,10 @@ echo "[dev] 启动前端 Vite dev server..."
 ) &
 PIDS+=($!)
 
-echo "[dev] 后端: http://localhost:8000  | 前端: http://localhost:5173"
+echo "[dev] 后端: http://${BACKEND_HOST}:${BACKEND_PORT}  | 前端: http://localhost:5173"
 echo "[dev] 按 Ctrl+C 退出全部"
 
-wait
+wait -n
+EXIT_CODE=$?
+echo "[dev] 子进程退出 (code=$EXIT_CODE)，正在关闭..."
+exit $EXIT_CODE

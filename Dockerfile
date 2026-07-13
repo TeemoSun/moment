@@ -17,7 +17,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 WORKDIR /app
 # 先拷依赖描述以便利用缓存
 COPY backend/pyproject.toml backend/uv.lock* ./backend/
-RUN cd backend && uv sync --frozen --no-dev || uv sync --no-dev
+RUN cd backend && uv sync --frozen --no-dev
 
 COPY backend/ ./backend/
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
@@ -26,4 +26,5 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # 启动时自动迁移 + gunicorn 运行
+# ensure_runtime_env 由 main.py lifespan 触发，无需额外前置调用
 CMD ["sh", "-c", "cd backend && uv run alembic upgrade head && uv run gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 app.main:app"]

@@ -21,6 +21,7 @@ export default [
         FormData: "readonly",
         File: "readonly",
         HTMLElement: "readonly",
+        process: "readonly",
       },
     },
     plugins: {

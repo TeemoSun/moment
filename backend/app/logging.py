@@ -25,17 +25,15 @@ def setup_logging() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    root = logging.getLogger()
-    root.setLevel(settings.LOG_LEVEL)
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(settings.LOG_LEVEL)
 
-    # 文件
     fh = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
     fh.setFormatter(fmt)
-    root.addHandler(fh)
+    app_logger.addHandler(fh)
 
-    # 控制台
     sh = logging.StreamHandler(sys.stderr)
     sh.setFormatter(fmt)
-    root.addHandler(sh)
+    app_logger.addHandler(sh)
 
     _configured = True

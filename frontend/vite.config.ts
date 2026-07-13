@@ -1,19 +1,26 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import compression from "vite-plugin-compression";
+import { fileURLToPath } from "url";
+
+const backendPort = process.env.VITE_BACKEND_PORT || "8000";
 
 export default defineConfig({
   plugins: [
     react(),
-    // 生产预压缩 gzip / brotli
     compression({ algorithm: "gzip", ext: ".gz" }),
     compression({ algorithm: "brotliCompress", ext: ".br" }),
   ],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   server: {
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: `http://localhost:${backendPort}`,
         changeOrigin: true,
       },
     },
