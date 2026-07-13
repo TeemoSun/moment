@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "animal-island-ui": "^1.2.2",
+    "classnames": "^2.5.1",
     "jsencrypt": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

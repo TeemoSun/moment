@@ -1,0 +1,59 @@
+"""依赖注入：get_current_user / require_admin / verify_csrf。"""
+
+from __future__ import annotations
+
+from fastapi import Cookie, Depends, Request
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.core.jwt import decode_token
+from app.database import get_db
+from app.models.users import User
+from app.schemas.common import AppError, ErrorCode
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    token: str | None = Cookie(default=None, alias=settings.COOKIE_NAME),
+) -> User:
+    """从 cookie 读 JWT -> decode -> 查 user。"""
+    if not token:
+        raise AppError(ErrorCode.AUTH_REQUIRED, "Authentication required", 401)
+
+    try:
+        payload = decode_token(token)
+        user_id = int(payload["sub"])
+    except ExpiredSignatureError:
+        raise AppError(ErrorCode.AUTH_REQUIRED, "Token expired", 401) from None
+    except (InvalidTokenError, KeyError, ValueError):
+        raise AppError(ErrorCode.AUTH_REQUIRED, "Invalid token", 401) from None
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise AppError(ErrorCode.AUTH_REQUIRED, "User not found", 401)
+
+    if user.status == "deactivated":
+        raise AppError(ErrorCode.ACCOUNT_DEACTIVATED, "Account deactivated", 401)
+
+    if user.status == "disabled":
+        raise AppError(ErrorCode.ACCOUNT_DISABLED, "Account disabled", 403)
+
+    return user
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """role != admin -> 403 ADMIN_REQUIRED。"""
+    if user.role != "admin":
+        raise AppError(ErrorCode.ADMIN_REQUIRED, "Admin access required", 403)
+    return user
+
+
+def verify_csrf(request: Request) -> None:
+    """校验 X-CSRF-Token header == CSRF cookie。"""
+    header_token = request.headers.get("X-CSRF-Token")
+    cookie_token = request.cookies.get(settings.CSRF_COOKIE_NAME)
+
+    if not header_token or not cookie_token or header_token != cookie_token:
+        raise AppError(ErrorCode.CSRF_FAILED, "CSRF validation failed", 403)

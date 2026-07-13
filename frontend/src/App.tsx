@@ -1,19 +1,84 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth";
+import RequireAuth from "@/components/RequireAuth";
+import InitPage from "@/pages/InitPage";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
+import SettingsPage from "@/pages/SettingsPage";
 
-export default function App() {
-  const [status, setStatus] = useState<string>("checking...");
+function AppRoutes() {
+  const { initialized, user, fetchInitialized, fetchMe } = useAuthStore();
+  const location = useLocation();
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    fetch("/api/health", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setStatus(d.status ?? "unknown"))
-      .catch((e) => setStatus("error: " + String(e)));
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    const init = async () => {
+      await fetchInitialized();
+      const state = useAuthStore.getState();
+      if (state.initialized && location.pathname !== "/init") {
+        await fetchMe();
+      }
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (initialized === null) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          fontWeight: 600,
+          color: "#9f927d",
+          fontSize: 18,
+        }}
+      >
+        加载中...
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Moments</h1>
-      <p>Backend health: {status}</p>
-    </div>
+    <Routes>
+      <Route
+        path="/"
+        element={
+          !initialized ? (
+            <Navigate to="/init" replace />
+          ) : !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <Navigate to="/settings" replace />
+          )
+        }
+      />
+      <Route path="/init" element={<InitPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/settings"
+        element={
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

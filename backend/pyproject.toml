@@ -16,6 +16,8 @@ dependencies = [
     "pydantic-settings>=2.5",
     "python-multipart>=0.0.12",
     "filetype>=1.2",
+    "email-validator>=2.3.0",
+    "bcrypt<4",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +34,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "C4"]
+ignore = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"

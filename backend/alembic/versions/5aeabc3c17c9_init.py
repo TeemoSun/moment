@@ -27,7 +27,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("public_key_pem", sa.Text(), nullable=False),
         sa.Column("private_key_pem", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -96,7 +98,9 @@ def upgrade() -> None:
         sa.Column("format", sa.String(length=20), nullable=False),
         sa.Column("kind", sa.String(length=20), nullable=False),
         sa.Column("owner_id", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.CheckConstraint(
             "kind IN ('image', 'video', 'avatar', 'thumb', 'large')", name="ck_file_metadata_kind"
         ),
@@ -111,7 +115,9 @@ def upgrade() -> None:
         sa.Column("user_b_id", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(length=20), server_default="pending", nullable=False),
         sa.Column("requester_id", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.Column("accepted_at", sa.DateTime(), nullable=True),
         sa.CheckConstraint("status IN ('pending', 'accepted')", name="ck_friendships_status"),
         sa.CheckConstraint("user_a_id < user_b_id", name="ck_friendships_user_order"),
@@ -129,7 +135,9 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=20), server_default="active", nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("used_by_id", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.CheckConstraint(
             "status IN ('active', 'used', 'expired', 'revoked')", name="ck_invite_codes_status"
         ),
@@ -148,7 +156,9 @@ def upgrade() -> None:
         sa.Column("target_type", sa.String(length=20), nullable=False),
         sa.Column("target_id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.CheckConstraint("target_type IN ('post', 'comment')", name="ck_likes_target_type"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
@@ -232,7 +242,9 @@ def upgrade() -> None:
         sa.Column("format", sa.String(length=20), nullable=False),
         sa.Column("kind", sa.String(length=20), nullable=False),
         sa.Column("sort_order", sa.Integer(), server_default="0", nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default="CURRENT_TIMESTAMP", nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False
+        ),
         sa.CheckConstraint("kind IN ('image', 'video')", name="ck_post_media_kind"),
         sa.ForeignKeyConstraint(["post_id"], ["posts.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),

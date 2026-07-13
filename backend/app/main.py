@@ -6,22 +6,27 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from alembic.config import Config
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from alembic import command
 from app.config import BACKEND_ROOT, ENV_FILE, ensure_runtime_env, settings
+from app.schemas.common import AppError
 
 logger = logging.getLogger("app")
 
 
 def _run_alembic_upgrade() -> None:
     """运行 alembic upgrade head。"""
+    if os.environ.get("SKIP_ALEMBIC"):
+        return
     alembic_ini = BACKEND_ROOT / "alembic.ini"
     if not alembic_ini.exists():
         logger.warning("alembic.ini not found at %s, skipping migration", alembic_ini)
@@ -52,6 +57,18 @@ def _ensure_system_status() -> None:
         db.close()
 
 
+def _warmup_rsa() -> None:
+    """启动时预热 RSA 密钥对。"""
+    from app.database import SessionLocal
+    from app.services.rsa_service import get_or_create_rsa_key
+
+    db = SessionLocal()
+    try:
+        get_or_create_rsa_key(db)
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ensure_runtime_env()
@@ -67,6 +84,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     setup_logging()
     _run_alembic_upgrade()
     _ensure_system_status()
+    _warmup_rsa()
     logger.info("Moments backend started")
     yield
 
@@ -93,16 +111,60 @@ if settings.CORS_ORIGINS:
 
 
 def register_routes(app: FastAPI) -> None:
-    """注册所有 API 路由。
+    """注册所有 API 路由。"""
+    from app.api.v1 import router as v1_router
 
-    在此函数内 include_router 以确保所有 /api/* 路由在 SPA fallback 之前注册。
-    示例：
-        from app.api.v1 import router as v1_router
-        app.include_router(v1_router, prefix="/api/v1")
-    """
+    app.include_router(v1_router, prefix="/api/v1")
 
 
 register_routes(app)
+
+
+@app.exception_handler(AppError)
+def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"code": exc.code, "message": exc.message, "detail": exc.detail},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    from app.schemas.common import ErrorCode
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "code": ErrorCode.VALIDATION_ERROR,
+            "message": "Validation error",
+            "detail": {"errors": exc.errors()},
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    from app.schemas.common import ErrorCode
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": str(exc.detail) if isinstance(exc.detail, str) else ErrorCode.INTERNAL,
+            "message": str(exc.detail),
+            "detail": {},
+        },
+    )
+
+
+@app.exception_handler(Exception)
+def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    from app.schemas.common import ErrorCode
+
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"code": ErrorCode.INTERNAL, "message": "Internal server error", "detail": {}},
+    )
 
 
 @app.get("/api/health")
