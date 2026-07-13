@@ -6,6 +6,9 @@ import InitPage from "@/pages/InitPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import SettingsPage from "@/pages/SettingsPage";
+import FeedPage from "@/pages/FeedPage";
+import PostCreatePage from "@/pages/PostCreatePage";
+import UserPage from "@/pages/UserPage";
 
 function AppRoutes() {
   const { initialized, user, fetchInitialized, fetchMe } = useAuthStore();
@@ -55,13 +58,37 @@ function AppRoutes() {
           ) : !user ? (
             <Navigate to="/login" replace />
           ) : (
-            <Navigate to="/settings" replace />
+            <Navigate to="/feed" replace />
           )
         }
       />
       <Route path="/init" element={<InitPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/feed"
+        element={
+          <RequireAuth>
+            <FeedPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/post/create"
+        element={
+          <RequireAuth>
+            <PostCreatePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/users/:userId"
+        element={
+          <RequireAuth>
+            <UserPage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/settings"
         element={

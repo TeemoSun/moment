@@ -58,7 +58,7 @@ export default function LoginPage() {
       });
 
       setUser(user);
-      navigate("/settings", { replace: true });
+      navigate("/feed", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === "ACCOUNT_LOCKED") {
