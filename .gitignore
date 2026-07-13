@@ -28,9 +28,7 @@ storage/
 *.swp
 
 # AGENTS
-.kilo/plans/
-.kilo/worktrees/
-.kilo/skills/
+.kilo/
 .codegraph/
 
 # OS
