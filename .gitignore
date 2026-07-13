@@ -30,6 +30,7 @@ storage/
 # AGENTS
 .kilo/plans/
 .kilo/worktrees/
+.codegraph/
 
 # OS
 .DS_Store

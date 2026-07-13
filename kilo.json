@@ -1,0 +1,16 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "mcp": {
+    "codegraph": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@colbymchenry/codegraph",
+        "serve",
+        "--mcp"
+      ],
+      "enabled": true
+    }
+  }
+}
