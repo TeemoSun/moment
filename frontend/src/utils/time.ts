@@ -1,6 +1,9 @@
 export function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
-  const then = new Date(dateStr).getTime();
+  const normalized = /[zZ]|[+-]\d{2}:?\d{2}$/.test(dateStr)
+    ? dateStr
+    : `${dateStr}Z`;
+  const then = new Date(normalized).getTime();
   const diff = Math.max(0, now - then);
   const seconds = Math.floor(diff / 1000);
 
