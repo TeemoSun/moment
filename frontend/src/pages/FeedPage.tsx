@@ -2,10 +2,12 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Title } from "animal-island-ui";
 import { usePostsStore } from "@/stores/posts";
+import { useAuthStore } from "@/stores/auth";
 import PostCard from "@/components/PostCard";
 
 export default function FeedPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
   const { items, hasMore, loading, loadingMore, error, fetchFeed, refresh, removePost } =
     usePostsStore();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,11 @@ export default function FeedPage() {
           <Button type="default" size="small" onClick={() => navigate("/friends")}>
             好友
           </Button>
+          {user?.role === "admin" && (
+            <Button type="default" size="small" onClick={() => navigate("/admin")}>
+              管理后台
+            </Button>
+          )}
           <Button type="default" size="small" onClick={() => navigate("/settings")}>
             设置
           </Button>

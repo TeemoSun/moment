@@ -11,6 +11,7 @@ import PostCreatePage from "@/pages/PostCreatePage";
 import UserPage from "@/pages/UserPage";
 import PostDetailPage from "@/pages/PostDetailPage";
 import FriendsPage from "@/pages/FriendsPage";
+import AdminPage from "@/pages/AdminPage";
 
 function AppRoutes() {
   const { initialized, user, fetchInitialized, fetchMe } = useAuthStore();
@@ -112,6 +113,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <FriendsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <RequireAuth role="admin">
+            <AdminPage />
           </RequireAuth>
         }
       />
