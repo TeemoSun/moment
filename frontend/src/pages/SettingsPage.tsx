@@ -217,7 +217,7 @@ export default function SettingsPage() {
 
     try {
       const res = await uploadAvatar(file);
-      setUser({ ...user, avatar_url: res.avatar_url });
+      setUser({ ...user, avatar_url: `${res.avatar_url}?t=${Date.now()}` });
       notify.success("头像已更新");
     } catch (err) {
       notify.error(err instanceof ApiError ? err.message : "上传失败");
