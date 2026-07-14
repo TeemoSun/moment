@@ -572,22 +572,26 @@ export default function SettingsPage() {
           <Button type="default" onClick={handleLogout}>
             登出
           </Button>
-          <Button type="default" danger onClick={() => setShowDeactivateModal(true)}>
-            注销账号
-          </Button>
+          {user.role !== "admin" && (
+            <Button type="default" danger onClick={() => setShowDeactivateModal(true)}>
+              注销账号
+            </Button>
+          )}
         </div>
       </Card>
 
-      <Modal
-        open={showDeactivateModal}
-        title="确认注销"
-        onClose={() => setShowDeactivateModal(false)}
-        onOk={handleDeactivate}
-        typewriter={false}
-      >
-        <p style={{ margin: 0 }}>注销后账号将变为不可用状态，此操作不可撤销。确定要注销吗？</p>
-        {deactivating && <p style={{ color: "#e05a5a", fontWeight: 600 }}>正在注销...</p>}
-      </Modal>
+      {user.role !== "admin" && (
+        <Modal
+          open={showDeactivateModal}
+          title="确认注销"
+          onClose={() => setShowDeactivateModal(false)}
+          onOk={handleDeactivate}
+          typewriter={false}
+        >
+          <p style={{ margin: 0 }}>注销后账号将变为不可用状态，此操作不可撤销。确定要注销吗？</p>
+          {deactivating && <p style={{ color: "#e05a5a", fontWeight: 600 }}>正在注销...</p>}
+        </Modal>
+      )}
     </div>
   );
 }

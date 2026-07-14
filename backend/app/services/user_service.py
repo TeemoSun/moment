@@ -139,6 +139,8 @@ def upload_avatar(db: Session, user: User, file: UploadFile) -> User:
 
 
 def deactivate(db: Session, user: User) -> None:
+    if user.role == "admin":
+        raise AppError(ErrorCode.FORBIDDEN, "管理员账号不可注销", 403)
     user.status = "deactivated"
     db.commit()
 

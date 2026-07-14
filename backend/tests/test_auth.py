@@ -248,13 +248,44 @@ def test_default_avatar(client: TestClient) -> None:
     assert resp.headers["content-type"] == "image/png"
 
 
-def test_deactivate(client: TestClient) -> None:
-    _init_system(client)
-    pub = _get_public_key(client)
-    enc = _rsa_encrypt(pub, "TestPass123!")
-    client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
+def _create_user_in_db(
+    db_session: Session,
+    email: str,
+    nickname: str,
+    role: str = "user",
+    status: str = "active",
+) -> int:
+    from app.models.users import User
 
-    csrf = client.cookies.get("moments_csrf")
+    user = User(
+        email=email,
+        password_hash="x",
+        nickname=nickname,
+        role=role,
+        status=status,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user.id
+
+
+def _set_user_token(client: TestClient, user_id: int, role: str = "user") -> str:
+    from app.core.cookies import generate_csrf_token
+    from app.core.jwt import create_access_token
+
+    token = create_access_token(user_id, role)
+    client.cookies.set("moments_token", token)
+    csrf = generate_csrf_token()
+    client.cookies.set("moments_csrf", csrf)
+    return csrf
+
+
+def test_deactivate(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    user_id = _create_user_in_db(db_session, "u@t.com", "User")
+    csrf = _set_user_token(client, user_id, "user")
+
     resp = client.post("/api/v1/me/deactivate", headers={"X-CSRF-Token": csrf})
     assert resp.status_code == 204
 
@@ -263,19 +294,29 @@ def test_deactivate(client: TestClient) -> None:
     assert resp.json()["code"] == "ACCOUNT_DEACTIVATED"
 
 
-def test_deactivated_user_cannot_login(client: TestClient, db_session: Session) -> None:
+def test_admin_cannot_deactivate(client: TestClient) -> None:
     _init_system(client)
-
-    from app.models.users import User
-
-    user = db_session.query(User).filter(User.email == "admin@test.com").first()
-    assert user is not None
-    user.status = "deactivated"
-    db_session.commit()
-
     pub = _get_public_key(client)
     enc = _rsa_encrypt(pub, "TestPass123!")
-    resp = client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
+    client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
+
+    csrf = client.cookies.get("moments_csrf")
+    resp = client.post("/api/v1/me/deactivate", headers={"X-CSRF-Token": csrf})
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "FORBIDDEN"
+
+    resp = client.get("/api/v1/me")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "active"
+
+
+def test_deactivated_user_cannot_login(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _create_user_in_db(db_session, "u@t.com", "User", status="deactivated")
+
+    pub = _get_public_key(client)
+    enc = _rsa_encrypt(pub, "UserPass123!")
+    resp = client.post("/api/v1/auth/login", json={"email": "u@t.com", "password": enc})
     assert resp.status_code == 403
     assert resp.json()["code"] == "ACCOUNT_DEACTIVATED"
 
