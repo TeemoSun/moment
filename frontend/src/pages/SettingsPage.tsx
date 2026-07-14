@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input, Card, Title, Modal, Tag } from "animal-island-ui";
+import { Button, Input, Card, Title, Modal, Tag, Tooltip } from "animal-island-ui";
 import { useAuthStore } from "@/stores/auth";
 import { updateMe, changePassword, uploadAvatar, deactivate } from "@/api/me";
 import { getRsaPublicKey } from "@/api/auth";
@@ -26,7 +26,6 @@ export default function SettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
 
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -214,8 +213,6 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
     setAvatarUploading(true);
 
     try {
@@ -254,59 +251,35 @@ export default function SettingsPage() {
       <Title color="app-teal">个人设置</Title>
 
       <Card style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 16 }}>
-        <img
-          src={user.avatar_url}
-          alt="avatar"
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            objectFit: "cover",
-            border: "2.5px solid #c4b89e",
-          }}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleAvatarSelect}
+          style={{ display: "none" }}
         />
+        <Tooltip title="点击修改头像" placement="right" variant="island">
+          <img
+            src={user.avatar_url}
+            alt="avatar"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              objectFit: "cover",
+              border: "2.5px solid #c4b89e",
+              cursor: "pointer",
+              opacity: avatarUploading ? 0.5 : 1,
+            }}
+          />
+        </Tooltip>
         <div>
           <div style={{ fontWeight: 700, fontSize: 18, color: "#794f27" }}>{user.nickname}</div>
           <div style={{ color: "#9f927d", fontSize: 14 }}>{user.email}</div>
           {user.signature && (
             <div style={{ color: "#8a7b66", fontSize: 13, marginTop: 4 }}>{user.signature}</div>
           )}
-        </div>
-      </Card>
-
-      <Card style={{ marginTop: 24 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "#794f27", marginBottom: 12 }}>
-          头像
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {previewUrl && (
-            <img
-              src={previewUrl}
-              alt="preview"
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "2px solid #c4b89e",
-              }}
-            />
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handleAvatarSelect}
-            style={{ display: "none" }}
-          />
-          <Button
-            type="default"
-            size="small"
-            onClick={() => fileInputRef.current?.click()}
-            loading={avatarUploading}
-          >
-            选择图片
-          </Button>
         </div>
       </Card>
 
