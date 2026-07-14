@@ -41,7 +41,7 @@ echo "[dev] 安装后端依赖..."
 (
   cd "$ROOT/backend"
   if command -v uv >/dev/null 2>&1; then
-    uv sync --dev
+    uv sync --extra dev
   fi
 )
 
