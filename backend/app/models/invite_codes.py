@@ -29,7 +29,7 @@ class InviteCode(Base):
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="active", server_default="active"
     )
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     used_by_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

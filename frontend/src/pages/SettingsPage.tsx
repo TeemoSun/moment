@@ -1,11 +1,13 @@
-import { useState, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input, Card, Title, Modal } from "animal-island-ui";
+import { Button, Input, Card, Title, Modal, Tag } from "animal-island-ui";
 import { useAuthStore } from "@/stores/auth";
 import { updateMe, changePassword, uploadAvatar, deactivate } from "@/api/me";
 import { getRsaPublicKey } from "@/api/auth";
 import { encryptPassword } from "@/utils/rsa";
 import { ApiError } from "@/api/client";
+import { listInvites, createInvite, revokeInvite, renewInvite } from "@/api/invites";
+import type { InviteOut } from "@/api/invites";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -29,6 +31,99 @@ export default function SettingsPage() {
 
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+
+  const [invites, setInvites] = useState<InviteOut[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(true);
+  const [invitesError, setInvitesError] = useState("");
+  const [durationDays, setDurationDays] = useState<number | null>(7);
+  const [inviteActionLoading, setInviteActionLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setInvitesLoading(true);
+      setInvitesError("");
+      try {
+        const data = await listInvites();
+        setInvites(data);
+      } catch (err) {
+        setInvitesError(err instanceof ApiError ? err.message : "加载邀请码失败");
+      } finally {
+        setInvitesLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleCreateInvite = async () => {
+    setInvitesError("");
+    setInviteActionLoading(true);
+    try {
+      const newInvite = await createInvite({ duration_days: durationDays });
+      setInvites((prev) => [newInvite, ...prev]);
+    } catch (err) {
+      setInvitesError(err instanceof ApiError ? err.message : "生成邀请码失败");
+    } finally {
+      setInviteActionLoading(false);
+    }
+  };
+
+  const handleRenewInvite = async () => {
+    setInvitesError("");
+    setInviteActionLoading(true);
+    try {
+      const renewed = await renewInvite({ duration_days: durationDays });
+      setInvites((prev) => [renewed, ...prev]);
+    } catch (err) {
+      setInvitesError(err instanceof ApiError ? err.message : "续期失败");
+    } finally {
+      setInviteActionLoading(false);
+    }
+  };
+
+  const handleRevokeInvite = async (id: number) => {
+    setInvitesError("");
+    try {
+      await revokeInvite(id);
+      setInvites((prev) =>
+        prev.map((inv) => (inv.id === id ? { ...inv, status: "revoked" } : inv)),
+      );
+    } catch (err) {
+      setInvitesError(err instanceof ApiError ? err.message : "失效操作失败");
+    }
+  };
+
+  const handleCopyLink = async (code: string) => {
+    const link = `${window.location.origin}/register?invite=${code}`;
+    try {
+      await window.navigator.clipboard.writeText(link);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      setInvitesError("复制失败");
+    }
+  };
+
+  const formatExpiresAt = (expiresAt: string | null): string => {
+    if (expiresAt === null) return "永久";
+    const expTime = new Date(expiresAt).getTime();
+    if (expTime < Date.now()) return "已过期";
+    return new Date(expiresAt).toLocaleDateString();
+  };
+
+  const getStatusTagColor = (status: string): "app-teal" | "app-yellow" | "default" => {
+    if (status === "active") return "app-teal";
+    if (status === "expired") return "app-yellow";
+    return "default";
+  };
+
+  const getStatusLabel = (status: string): string => {
+    if (status === "active") return "有效";
+    if (status === "used") return "已使用";
+    if (status === "expired") return "已过期";
+    if (status === "revoked") return "已失效";
+    return status;
+  };
 
   if (!user) return null;
 
@@ -338,6 +433,158 @@ export default function SettingsPage() {
             修改密码
           </Button>
         </form>
+      </Card>
+
+      <Card style={{ marginTop: 24 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: "#794f27", marginBottom: 12 }}>
+          邀请码管理
+        </div>
+        {!user.can_invite && (
+          <div
+            style={{
+              color: "#e05a5a",
+              fontSize: 14,
+              fontWeight: 500,
+              marginBottom: 12,
+            }}
+          >
+            你的邀请权限已被管理员关闭，无法生成邀请码
+          </div>
+        )}
+        <div style={{ marginBottom: 12 }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#794f27",
+              marginBottom: 8,
+            }}
+          >
+            有效期
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {[
+              { label: "1 天", value: 1 },
+              { label: "7 天", value: 7 },
+              { label: "30 天", value: 30 },
+              { label: "永久", value: null },
+            ].map((opt) => (
+              <Button
+                key={opt.label}
+                type={durationDays === opt.value ? "primary" : "default"}
+                size="small"
+                onClick={() => setDurationDays(opt.value)}
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          <Button
+            type="primary"
+            size="small"
+            onClick={handleCreateInvite}
+            loading={inviteActionLoading}
+            disabled={!user.can_invite}
+          >
+            生成邀请码
+          </Button>
+          <Button
+            type="default"
+            size="small"
+            onClick={handleRenewInvite}
+            loading={inviteActionLoading}
+            disabled={!user.can_invite}
+          >
+            续期
+          </Button>
+        </div>
+        {invitesError && (
+          <div
+            style={{
+              color: "#e05a5a",
+              fontSize: 14,
+              fontWeight: 500,
+              marginBottom: 12,
+            }}
+          >
+            {invitesError}
+          </div>
+        )}
+        {invitesLoading ? (
+          <div style={{ color: "#9f927d", fontSize: 14, fontWeight: 500 }}>加载中...</div>
+        ) : invites.length === 0 ? (
+          <div style={{ color: "#9f927d", fontSize: 14, fontWeight: 500 }}>暂无邀请码</div>
+        ) : (
+          <div>
+            {invites.map((inv) => (
+              <div
+                key={inv.id}
+                style={{
+                  background: "rgb(247, 243, 223)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  marginBottom: 8,
+                  border: "1.5px solid #c4b89e",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      color: "#794f27",
+                    }}
+                  >
+                    {inv.code}
+                  </span>
+                  <Tag color={getStatusTagColor(inv.status)} size="small">
+                    {getStatusLabel(inv.status)}
+                  </Tag>
+                  <span style={{ color: "#9f927d", fontSize: 13 }}>
+                    {formatExpiresAt(inv.expires_at)}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Button
+                    type="default"
+                    size="small"
+                    onClick={() => handleCopyLink(inv.code)}
+                  >
+                    {copiedCode === inv.code ? "已复制" : "复制链接"}
+                  </Button>
+                  {inv.status === "active" && (
+                    <Button
+                      type="default"
+                      size="small"
+                      danger
+                      onClick={() => handleRevokeInvite(inv.id)}
+                    >
+                      失效
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card style={{ marginTop: 24 }}>
