@@ -23,13 +23,13 @@ def register(db: Session, data: RegisterIn) -> User:
 
     existing = db.query(User).filter(User.email == email).first()
     if existing:
-        raise AppError(ErrorCode.EMAIL_EXISTS, "Email already registered", 409)
+        raise AppError(ErrorCode.EMAIL_EXISTS, "该邮箱已注册", 409)
 
     invite = db.query(InviteCode).filter(InviteCode.code == data.invite_code).first()
     if not invite or invite.status != "active" or invite.used_by_id is not None:
-        raise AppError(ErrorCode.INVALID_INVITE, "Invalid invite code", 400)
+        raise AppError(ErrorCode.INVALID_INVITE, "邀请码无效", 400)
     if invite.expires_at and invite.expires_at <= utcnow():
-        raise AppError(ErrorCode.INVALID_INVITE, "Invalid invite code", 400)
+        raise AppError(ErrorCode.INVALID_INVITE, "邀请码无效", 400)
 
     try:
         from app.services.rsa_service import get_or_create_rsa_key
@@ -37,11 +37,11 @@ def register(db: Session, data: RegisterIn) -> User:
         key = get_or_create_rsa_key(db)
         plain_password = rsa_decrypt(key.private_key_pem, data.password)
     except ValueError:
-        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "Failed to decrypt password", 400) from None
+        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "密码解密失败", 400) from None
 
     pw_errors = validate_password(plain_password)
     if pw_errors:
-        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "Password too weak", 400, {"errors": pw_errors})
+        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "密码强度不足", 400, {"errors": pw_errors})
 
     password_hash = hash_password(plain_password)
     user = User(
@@ -66,13 +66,13 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
     email = data.email.lower().strip()
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        raise AppError(ErrorCode.INVALID_CREDENTIALS, "Invalid credentials", 401)
+        raise AppError(ErrorCode.INVALID_CREDENTIALS, "邮箱或密码错误", 401)
 
     if user.status == "disabled":
-        raise AppError(ErrorCode.ACCOUNT_DISABLED, "Account disabled", 403)
+        raise AppError(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用", 403)
 
     if user.status == "deactivated":
-        raise AppError(ErrorCode.ACCOUNT_DEACTIVATED, "Account deactivated", 403)
+        raise AppError(ErrorCode.ACCOUNT_DEACTIVATED, "账号已注销", 403)
 
     now = utcnow()
     if user.locked_until:
@@ -81,7 +81,7 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
             retry_after = int((locked_until - now).total_seconds())
             raise AppError(
                 ErrorCode.ACCOUNT_LOCKED,
-                "Account locked",
+                "账号已锁定",
                 403,
                 {"locked_until": locked_until.isoformat(), "retry_after_seconds": retry_after},
             )
@@ -93,11 +93,11 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
         plain_password = rsa_decrypt(key.private_key_pem, data.password)
     except ValueError:
         _increment_failed(db, user)
-        raise AppError(ErrorCode.INVALID_CREDENTIALS, "Invalid credentials", 401) from None
+        raise AppError(ErrorCode.INVALID_CREDENTIALS, "邮箱或密码错误", 401) from None
 
     if not verify_password(plain_password, user.password_hash):
         _increment_failed(db, user)
-        raise AppError(ErrorCode.INVALID_CREDENTIALS, "Invalid credentials", 401)
+        raise AppError(ErrorCode.INVALID_CREDENTIALS, "邮箱或密码错误", 401)
 
     user.failed_login_count = 0
     user.locked_until = None
@@ -117,7 +117,7 @@ def _increment_failed(db: Session, user: User) -> None:
         db.commit()
         raise AppError(
             ErrorCode.ACCOUNT_LOCKED,
-            "Account locked",
+            "账号已锁定",
             403,
             {"locked_until": user.locked_until.isoformat(), "retry_after_seconds": 900},
         )

@@ -24,7 +24,7 @@ def upload_media(db: Session, user: User, file: UploadFile) -> dict:
     采用分块流式落盘，避免大文件全量读入内存。
     """
     if not file.filename:
-        raise AppError(ErrorCode.VALIDATION_ERROR, "No file provided", 400)
+        raise AppError(ErrorCode.VALIDATION_ERROR, "未提供文件", 400)
 
     max_any = max(settings.MEDIA_IMAGE_MAX_MB, settings.MEDIA_VIDEO_MAX_MB) * 1024 * 1024
     media_dir = filekit.get_media_dir()
@@ -46,7 +46,7 @@ def upload_media(db: Session, user: User, file: UploadFile) -> dict:
             tmp_path.unlink()
         except OSError:
             pass
-        raise AppError(ErrorCode.VALIDATION_ERROR, "Failed to read uploaded file", 400) from None
+        raise AppError(ErrorCode.VALIDATION_ERROR, "读取上传文件失败", 400) from None
 
     # 从临时文件检测真实格式
     try:
@@ -117,20 +117,20 @@ def get_media_file(
 ) -> tuple[Path, str]:
     """鉴权 + 防穿越，返回 (abs_path, content_type)。失败抛 AppError。"""
     if spec not in ("thumb", "large", "original"):
-        raise AppError(ErrorCode.VALIDATION_ERROR, "Invalid spec", 400)
+        raise AppError(ErrorCode.VALIDATION_ERROR, "规格参数无效", 400)
     from app.models.posts import Post
     from app.utils.visibility import can_view_post
 
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, viewer_id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to view this media", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权查看此媒体", 403)
     media = (
         db.query(PostMedia).filter(PostMedia.id == media_id, PostMedia.post_id == post_id).first()
     )
     if not media:
-        raise AppError(ErrorCode.NOT_FOUND, "Media not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "媒体不存在", 404)
     if spec == "original":
         rel: str | None = media.file_path
         mime = media.mime
@@ -141,8 +141,8 @@ def get_media_file(
         rel = media.large_path
         mime = "image/webp"
     if not rel:
-        raise AppError(ErrorCode.MEDIA_NOT_READY, "Media not ready yet", 404)
+        raise AppError(ErrorCode.MEDIA_NOT_READY, "媒体尚未就绪", 404)
     abs_path = filekit.resolve_within_storage(rel)
     if not abs_path:
-        raise AppError(ErrorCode.NOT_FOUND, "File not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "文件不存在", 404)
     return abs_path, mime

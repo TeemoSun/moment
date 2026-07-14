@@ -172,7 +172,7 @@ def test_revoke_invite(client: TestClient) -> None:
         headers={"X-CSRF-Token": csrf},
     )
     assert resp.status_code == 200
-    assert resp.json()["message"] == "Invite revoked"
+    assert resp.json()["message"] == "邀请码已失效"
 
     resp = client.get("/api/v1/invites")
     data = resp.json()

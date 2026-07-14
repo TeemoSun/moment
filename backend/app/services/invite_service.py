@@ -23,7 +23,7 @@ def generate_invite_code(db: Session) -> str:
         existing = db.query(InviteCode).filter(InviteCode.code == code).first()
         if not existing:
             return code
-    raise AppError(ErrorCode.INTERNAL, "Failed to generate unique invite code", 500)
+    raise AppError(ErrorCode.INTERNAL, "生成唯一邀请码失败，请重试", 500)
 
 
 def _compute_expires_at(duration_days: int | None) -> datetime | None:
@@ -45,7 +45,7 @@ def _sync_expired(db: Session, creator_id: int) -> None:
 
 def create_invite(db: Session, user: User, data: dict) -> dict:
     if not user.can_invite:
-        raise AppError(ErrorCode.INVITE_DISABLED, "Invite permission disabled", 403)
+        raise AppError(ErrorCode.INVITE_DISABLED, "邀请权限已被关闭", 403)
     _sync_expired(db, user.id)
     active = (
         db.query(InviteCode)
@@ -55,7 +55,7 @@ def create_invite(db: Session, user: User, data: dict) -> dict:
     if active:
         raise AppError(
             ErrorCode.ACTIVE_INVITE_EXISTS,
-            "Active invite already exists, revoke or renew first",
+            "已有有效邀请码，请先失效或续期",
             400,
         )
     code = generate_invite_code(db)
@@ -103,19 +103,19 @@ def list_invites(db: Session, user: User) -> list[dict]:
 def revoke_invite(db: Session, user: User, invite_id: int) -> dict:
     invite = db.query(InviteCode).filter(InviteCode.id == invite_id).first()
     if not invite or invite.creator_id != user.id:
-        raise AppError(ErrorCode.INVITE_NOT_FOUND, "Invite not found", 404)
+        raise AppError(ErrorCode.INVITE_NOT_FOUND, "邀请码不存在", 404)
     if invite.status == "used":
-        raise AppError(ErrorCode.INVITE_ALREADY_USED, "Used invite cannot be revoked", 400)
+        raise AppError(ErrorCode.INVITE_ALREADY_USED, "已使用的邀请码无法失效", 400)
     if invite.status in ("revoked", "expired"):
-        return {"message": "Invite already inactive"}
+        return {"message": "邀请码已失效"}
     invite.status = "revoked"
     db.commit()
-    return InviteActionOut(message="Invite revoked").model_dump(mode="json")
+    return InviteActionOut(message="邀请码已失效").model_dump(mode="json")
 
 
 def renew_invite(db: Session, user: User, data: dict) -> dict:
     if not user.can_invite:
-        raise AppError(ErrorCode.INVITE_DISABLED, "Invite permission disabled", 403)
+        raise AppError(ErrorCode.INVITE_DISABLED, "邀请权限已被关闭", 403)
     _sync_expired(db, user.id)
     active = (
         db.query(InviteCode)
@@ -125,7 +125,7 @@ def renew_invite(db: Session, user: User, data: dict) -> dict:
     if not active:
         raise AppError(
             ErrorCode.INVITE_NOT_FOUND,
-            "No active invite to renew, create one first",
+            "没有可续期的邀请码，请先生成一个",
             404,
         )
     duration_days = data.get("duration_days")

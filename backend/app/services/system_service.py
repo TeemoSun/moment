@@ -20,16 +20,16 @@ def init_system(db: Session, data: InitIn) -> User:
     """首次初始化：创建 admin 用户，标记系统已初始化。"""
     status = db.query(SystemStatus).filter(SystemStatus.id == 1).first()
     if status and status.initialized:
-        raise AppError(ErrorCode.ALREADY_INITIALIZED, "System already initialized", 409)
+        raise AppError(ErrorCode.ALREADY_INITIALIZED, "系统已初始化", 409)
 
     try:
         plain_password = rsa_decrypt(_get_private_pem(db), data.password)
     except ValueError:
-        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "Failed to decrypt password", 400) from None
+        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "密码解密失败", 400) from None
 
     pw_errors = validate_password(plain_password)
     if pw_errors:
-        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "Password too weak", 400, {"errors": pw_errors})
+        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "密码强度不足", 400, {"errors": pw_errors})
 
     email = data.email.lower().strip()
     password_hash = hash_password(plain_password)

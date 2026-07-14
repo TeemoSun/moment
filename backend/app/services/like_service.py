@@ -18,9 +18,9 @@ from app.utils.visibility import can_view_comment, can_view_post
 def toggle_post_like(db: Session, user: User, post_id: int) -> dict:
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, user.id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to like this post", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权点赞此动态", 403)
 
     _toggle(db, user, "post", post_id)
 
@@ -31,9 +31,9 @@ def unlike_post(db: Session, user: User, post_id: int) -> dict:
     """显式取消点赞（DELETE 语义）。"""
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, user.id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权操作", 403)
 
     existing = (
         db.query(Like)
@@ -55,15 +55,15 @@ def toggle_comment_like(db: Session, user: User, comment_id: int) -> dict:
         db.query(Comment).filter(Comment.id == comment_id, Comment.deleted_at.is_(None)).first()
     )
     if not comment:
-        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "评论不存在", 404)
 
     post = db.query(Post).filter(Post.id == comment.post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, user.id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to like this comment", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权点赞此评论", 403)
     if not can_view_comment(db, user.id, comment, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to like this comment", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权点赞此评论", 403)
 
     _toggle(db, user, "comment", comment_id)
 
@@ -76,13 +76,13 @@ def unlike_comment(db: Session, user: User, comment_id: int) -> dict:
         db.query(Comment).filter(Comment.id == comment_id, Comment.deleted_at.is_(None)).first()
     )
     if not comment:
-        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "评论不存在", 404)
 
     post = db.query(Post).filter(Post.id == comment.post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, user.id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权操作", 403)
 
     existing = (
         db.query(Like)

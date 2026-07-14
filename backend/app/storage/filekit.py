@@ -31,14 +31,14 @@ def detect_kind(content: bytes) -> str:
     """用 filetype.guess 检测，返回 'image' 或 'video'。不支持的抛 400。"""
     kind = filetype.guess(content)
     if kind is None:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported or unrecognized file", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的文件类型", 400)
     if kind.mime in DANGEROUS_MIMES:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Dangerous file type rejected", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "存在危险的文件类型，已被拒绝", 400)
     if kind.mime.startswith("image/"):
         return "image"
     if kind.mime.startswith("video/"):
         return "video"
-    raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported file type", 400)
+    raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的文件类型", 400)
 
 
 def detect_kind_from_file(path: Path) -> str:
@@ -52,15 +52,15 @@ def validate_image(content: bytes) -> tuple[str, Image.Image]:
     """校验真实图片格式，返回 (format_lower, PIL.Image)。失败抛 400。"""
     kind = filetype.guess(content)
     if kind is None or not kind.mime.startswith("image/"):
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid image file", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不是有效的图片文件", 400)
     try:
         Image.open(io.BytesIO(content)).verify()
         img = Image.open(io.BytesIO(content))
     except Exception:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Invalid image file", 400) from None
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "图片文件无效", 400) from None
     fmt = (img.format or "").lower()
     if fmt not in SUPPORTED_IMAGE_FORMATS:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported image format", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的图片格式", 400)
     return fmt, img
 
 
@@ -68,16 +68,16 @@ def validate_image_file(path: Path) -> str:
     """从文件路径校验真实图片格式，返回 format_lower。避免全量读入内存。"""
     kind = filetype.guess(str(path))
     if kind is None or not kind.mime.startswith("image/"):
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid image file", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不是有效的图片文件", 400)
     try:
         with Image.open(path) as img:
             img.verify()
         with Image.open(path) as img:
             fmt = (img.format or "").lower()
     except Exception:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Invalid image file", 400) from None
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "图片文件无效", 400) from None
     if fmt not in SUPPORTED_IMAGE_FORMATS:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported image format", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的图片格式", 400)
     return fmt
 
 
@@ -85,7 +85,7 @@ def validate_video(content: bytes) -> str:
     """校验视频真实格式，返回 format_lower。用 filetype + ffprobe。"""
     kind = filetype.guess(content)
     if kind is None or not kind.mime.startswith("video/"):
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid video file", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不是有效的视频文件", 400)
     ext = kind.extension.lower()
     tmp_path = None
     try:
@@ -98,9 +98,9 @@ def validate_video(content: bytes) -> str:
             timeout=10,
         )
         if result.returncode != 0:
-            raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Video file cannot be parsed", 400)
+            raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "无法解析视频文件", 400)
     except subprocess.TimeoutExpired:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Video validation timed out", 400) from None
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "视频校验超时", 400) from None
     finally:
         if tmp_path is not None:
             try:
@@ -108,7 +108,7 @@ def validate_video(content: bytes) -> str:
             except OSError:
                 pass
     if ext not in SUPPORTED_VIDEO_FORMATS:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported video format", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的视频格式", 400)
     return ext
 
 
@@ -116,7 +116,7 @@ def validate_video_file(path: Path) -> str:
     """从文件路径校验视频真实格式，返回 format_lower。避免全量读入内存。"""
     kind = filetype.guess(str(path))
     if kind is None or not kind.mime.startswith("video/"):
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid video file", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不是有效的视频文件", 400)
     ext = kind.extension.lower()
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_format", "-of", "json", str(path)],
@@ -124,9 +124,9 @@ def validate_video_file(path: Path) -> str:
         timeout=10,
     )
     if result.returncode != 0:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Video file cannot be parsed", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "无法解析视频文件", 400)
     if ext not in SUPPORTED_VIDEO_FORMATS:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported video format", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "不支持的视频格式", 400)
     return ext
 
 
@@ -147,7 +147,7 @@ def stream_to_file(file_obj, dest: Path, max_bytes: int) -> int:
                     dest.unlink()
                 except OSError:
                     pass
-                raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
+                raise AppError(ErrorCode.FILE_TOO_LARGE, "文件过大", 413)
             f.write(chunk)
     return total
 
@@ -159,9 +159,9 @@ def check_size(kind: str, size: int) -> None:
     elif kind == "video":
         max_bytes = settings.MEDIA_VIDEO_MAX_MB * 1024 * 1024
     else:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unknown media kind", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "未知的媒体类型", 400)
     if size > max_bytes:
-        raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
+        raise AppError(ErrorCode.FILE_TOO_LARGE, "文件过大", 413)
 
 
 def generate_filename(ext: str) -> str:

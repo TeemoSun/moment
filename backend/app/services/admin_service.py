@@ -104,7 +104,7 @@ def list_users(db: Session, page: int, page_size: int, search: str | None) -> di
 def update_user(db: Session, user_id: int, data: AdminUserUpdateIn) -> dict:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise AppError(ErrorCode.USER_NOT_FOUND, "User not found", 404)
+        raise AppError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
 
     if data.restore is True:
         if user.status == "deactivated":
@@ -114,7 +114,7 @@ def update_user(db: Session, user_id: int, data: AdminUserUpdateIn) -> dict:
         if user.status == "deactivated":
             raise AppError(
                 ErrorCode.VALIDATION_ERROR,
-                "Cannot set deactivated via admin; use restore",
+                "无法直接修改已注销用户的状态，请使用恢复操作",
                 400,
             )
         user.status = data.status
@@ -208,7 +208,7 @@ def list_posts(
 def delete_post(db: Session, post_id: int) -> None:
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if post.deleted_at is not None:
         return
     post.deleted_at = utcnow()
@@ -279,7 +279,7 @@ def list_comments(db: Session, page: int, page_size: int) -> dict:
 def delete_comment(db: Session, comment_id: int) -> None:
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
-        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "评论不存在", 404)
     if comment.deleted_at is not None:
         return
     comment.deleted_at = utcnow()
@@ -333,11 +333,11 @@ def list_invites(db: Session, page: int, page_size: int) -> dict:
 def revoke_invite(db: Session, invite_id: int) -> dict:
     invite = db.query(InviteCode).filter(InviteCode.id == invite_id).first()
     if not invite:
-        raise AppError(ErrorCode.INVITE_NOT_FOUND, "Invite not found", 404)
+        raise AppError(ErrorCode.INVITE_NOT_FOUND, "邀请码不存在", 404)
     if invite.status == "used":
-        raise AppError(ErrorCode.INVITE_ALREADY_USED, "Used invite cannot be revoked", 400)
+        raise AppError(ErrorCode.INVITE_ALREADY_USED, "已使用的邀请码无法失效", 400)
     if invite.status in ("revoked", "expired"):
-        return {"message": "Invite already inactive"}
+        return {"message": "邀请码已失效"}
     invite.status = "revoked"
     db.commit()
-    return {"message": "Invite revoked"}
+    return {"message": "邀请码已失效"}

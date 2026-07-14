@@ -33,13 +33,13 @@ def request_friend(db: Session, user: User, data: dict) -> dict:
     email = data["email"].lower().strip()
     target = db.query(User).filter(User.email == email).first()
     if not target:
-        raise AppError(ErrorCode.USER_NOT_FOUND, "User not found", 404)
+        raise AppError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
     if target.id == user.id:
-        raise AppError(ErrorCode.CANNOT_FRIEND_SELF, "Cannot send friend request to yourself", 400)
+        raise AppError(ErrorCode.CANNOT_FRIEND_SELF, "不能向自己发送好友请求", 400)
     if target.status != "active":
-        raise AppError(ErrorCode.USER_NOT_FOUND, "User not found", 404)
+        raise AppError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
     if are_friends(db, user.id, target.id):
-        raise AppError(ErrorCode.ALREADY_FRIENDS, "Already friends", 400)
+        raise AppError(ErrorCode.ALREADY_FRIENDS, "你们已经是好友了", 400)
     lo, hi = sorted((user.id, target.id))
     existing = (
         db.query(Friendship)
@@ -51,7 +51,7 @@ def request_friend(db: Session, user: User, data: dict) -> dict:
         .first()
     )
     if existing:
-        raise AppError(ErrorCode.FRIEND_REQUEST_EXISTS, "Friend request already exists", 400)
+        raise AppError(ErrorCode.FRIEND_REQUEST_EXISTS, "好友请求已存在，请等待对方确认", 400)
     f = Friendship(
         user_a_id=lo,
         user_b_id=hi,
@@ -62,7 +62,7 @@ def request_friend(db: Session, user: User, data: dict) -> dict:
     db.add(f)
     db.commit()
     db.refresh(f)
-    return {"message": "Friend request sent"}
+    return {"message": "好友请求已发送"}
 
 
 def list_requests(db: Session, user: User) -> list[dict]:
@@ -94,24 +94,24 @@ def list_requests(db: Session, user: User) -> list[dict]:
 def accept_request(db: Session, user: User, request_id: int) -> dict:
     f = db.query(Friendship).filter(Friendship.id == request_id).first()
     if not f or f.status != "pending":
-        raise AppError(ErrorCode.FRIEND_REQUEST_NOT_FOUND, "Friend request not found", 404)
+        raise AppError(ErrorCode.FRIEND_REQUEST_NOT_FOUND, "好友请求不存在", 404)
     if f.requester_id == user.id or not (f.user_a_id == user.id or f.user_b_id == user.id):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to accept this request", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权处理此好友请求", 403)
     f.status = "accepted"
     f.accepted_at = utcnow()
     db.commit()
-    return {"message": "Friend request accepted"}
+    return {"message": "已接受好友请求"}
 
 
 def reject_request(db: Session, user: User, request_id: int) -> dict:
     f = db.query(Friendship).filter(Friendship.id == request_id).first()
     if not f or f.status != "pending":
-        raise AppError(ErrorCode.FRIEND_REQUEST_NOT_FOUND, "Friend request not found", 404)
+        raise AppError(ErrorCode.FRIEND_REQUEST_NOT_FOUND, "好友请求不存在", 404)
     if f.requester_id == user.id or not (f.user_a_id == user.id or f.user_b_id == user.id):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to reject this request", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权处理此好友请求", 403)
     db.delete(f)
     db.commit()
-    return {"message": "Friend request rejected"}
+    return {"message": "已拒绝好友请求"}
 
 
 def list_friends(db: Session, user: User) -> list[dict]:
@@ -144,7 +144,7 @@ def list_friends(db: Session, user: User) -> list[dict]:
 
 def remove_friend(db: Session, user: User, other_id: int) -> None:
     if not are_friends(db, user.id, other_id):
-        raise AppError(ErrorCode.NOT_FRIENDS, "Not friends", 400)
+        raise AppError(ErrorCode.NOT_FRIENDS, "你们还不是好友", 400)
     lo, hi = sorted((user.id, other_id))
     f = (
         db.query(Friendship)

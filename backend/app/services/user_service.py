@@ -61,23 +61,19 @@ def change_password(db: Session, user: User, data: PasswordChangeIn) -> None:
     try:
         old_plain = rsa_decrypt(key.private_key_pem, data.old_password)
     except ValueError:
-        raise AppError(
-            ErrorCode.RSA_DECRYPT_FAILED, "Failed to decrypt old password", 400
-        ) from None
+        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "旧密码解密失败", 400) from None
 
     if not verify_password(old_plain, user.password_hash):
-        raise AppError(ErrorCode.INVALID_CREDENTIALS, "Invalid old password", 400)
+        raise AppError(ErrorCode.INVALID_CREDENTIALS, "旧密码不正确", 400)
 
     try:
         new_plain = rsa_decrypt(key.private_key_pem, data.new_password)
     except ValueError:
-        raise AppError(
-            ErrorCode.RSA_DECRYPT_FAILED, "Failed to decrypt new password", 400
-        ) from None
+        raise AppError(ErrorCode.RSA_DECRYPT_FAILED, "新密码解密失败", 400) from None
 
     pw_errors = validate_password(new_plain)
     if pw_errors:
-        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "Password too weak", 400, {"errors": pw_errors})
+        raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "密码强度不足", 400, {"errors": pw_errors})
 
     user.password_hash = hash_password(new_plain)
     db.commit()
@@ -86,18 +82,18 @@ def change_password(db: Session, user: User, data: PasswordChangeIn) -> None:
 def upload_avatar(db: Session, user: User, file: UploadFile) -> User:
     """上传头像：校验 -> 缩略图 -> 存 file_metadata。"""
     if not file.filename:
-        raise AppError(ErrorCode.VALIDATION_ERROR, "No file provided", 400)
+        raise AppError(ErrorCode.VALIDATION_ERROR, "未提供文件", 400)
 
     file.file.seek(0)
     content = file.file.read()
     max_size = settings.MEDIA_IMAGE_MAX_MB * 1024 * 1024
     if len(content) > max_size:
-        raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
+        raise AppError(ErrorCode.FILE_TOO_LARGE, "文件过大", 413)
 
     # 用 filekit 做真实格式校验 + 危险文件拒绝
     kind = filekit.detect_kind(content)
     if kind != "image":
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Avatar must be an image", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "头像必须是图片", 400)
     filekit.check_size(kind, len(content))
     fmt, _ = filekit.validate_image(content)
     if fmt == "jpg":
@@ -107,7 +103,7 @@ def upload_avatar(db: Session, user: User, file: UploadFile) -> User:
         Image.open(io.BytesIO(content)).verify()
         img = Image.open(io.BytesIO(content))
     except Exception:
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Invalid image file", 400) from None
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "图片文件无效", 400) from None
 
     storage_root = get_storage_root()
     avatars_dir = storage_root / "avatars"
@@ -152,7 +148,7 @@ def get_other_user(db: Session, viewer_id: int, user_id: int) -> dict:
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise AppError(ErrorCode.NOT_FOUND, "User not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "用户不存在", 404)
 
     is_deactivated = user.status == "deactivated"
     avatar_url = "/api/v1/avatars/default" if is_deactivated else avatar_url_for(user)

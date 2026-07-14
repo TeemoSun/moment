@@ -146,7 +146,7 @@ def validation_error_handler(request: Request, exc: RequestValidationError) -> J
         status_code=400,
         content={
             "code": ErrorCode.VALIDATION_ERROR,
-            "message": "Validation error",
+            "message": "请求参数校验失败",
             "detail": {"errors": exc.errors()},
         },
     )
@@ -156,11 +156,23 @@ def validation_error_handler(request: Request, exc: RequestValidationError) -> J
 def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     from app.schemas.common import ErrorCode
 
+    _http_status_msg = {
+        400: "请求错误",
+        401: "未登录或登录已过期",
+        403: "无权访问",
+        404: "资源不存在",
+        405: "请求方法不被允许",
+        409: "资源冲突",
+        413: "请求体过大",
+        422: "请求参数有误",
+        429: "请求过于频繁",
+    }
+    message = _http_status_msg.get(exc.status_code, f"请求出错（HTTP {exc.status_code}）")
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "code": str(exc.detail) if isinstance(exc.detail, str) else ErrorCode.INTERNAL,
-            "message": str(exc.detail),
+            "message": message,
             "detail": {},
         },
     )
@@ -173,7 +185,7 @@ def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(
         status_code=500,
-        content={"code": ErrorCode.INTERNAL, "message": "Internal server error", "detail": {}},
+        content={"code": ErrorCode.INTERNAL, "message": "服务器内部错误", "detail": {}},
     )
 
 
@@ -194,7 +206,7 @@ if _frontend_dist.exists() and (_frontend_dist / "index.html").exists():
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_fallback(request: Request, full_path: str) -> Response:
     if full_path.startswith("api/") or full_path == "api":
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
+        return JSONResponse({"detail": "资源不存在"}, status_code=404)
 
     file_path = _frontend_dist / full_path
     if full_path and file_path.is_file():

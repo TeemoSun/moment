@@ -63,15 +63,15 @@ def validate_password(plain: str) -> list[str]:
     """
     errors: list[str] = []
     if len(plain) < 8:
-        errors.append("Password must be at least 8 characters")
+        errors.append("密码至少需要 8 个字符")
     if len(plain) > 128:
-        errors.append("Password must be at most 128 characters")
+        errors.append("密码最多 128 个字符")
 
     has_digit = any(c.isdigit() for c in plain)
     has_alpha = any(c.isalpha() for c in plain)
     has_symbol = any(not c.isalnum() and c.isprintable() for c in plain)
     category_count = sum([has_digit, has_alpha, has_symbol])
     if category_count < 2:
-        errors.append("Password must contain at least 2 of: digits, letters, symbols")
+        errors.append("密码需至少包含数字、字母、符号中的两类")
 
     return errors

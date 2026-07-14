@@ -51,9 +51,9 @@ def _build_comment_author(user: User) -> dict:
 def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_size: int) -> dict:
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, viewer_id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to view this post", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权查看此动态", 403)
 
     base_q = db.query(Comment).filter(
         Comment.post_id == post_id,
@@ -182,9 +182,9 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
 def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, user.id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to comment on this post", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权评论此动态", 403)
 
     content = data.get("content")
     media_id = data.get("media_id")
@@ -195,7 +195,7 @@ def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
         content = content.strip() if content.strip() else None
 
     if not content and not media_id:
-        raise AppError(ErrorCode.EMPTY_COMMENT, "Comment must have content or image", 400)
+        raise AppError(ErrorCode.EMPTY_COMMENT, "评论需包含文字或图片", 400)
 
     image_path = None
     image_thumb_path = None
@@ -204,13 +204,13 @@ def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
     if media_id:
         media = db.query(PostMedia).filter(PostMedia.id == media_id).first()
         if not media:
-            raise AppError(ErrorCode.MEDIA_NOT_OWNED, "Media not found", 403)
+            raise AppError(ErrorCode.MEDIA_NOT_OWNED, "媒体文件不存在", 403)
         if media.owner_id != user.id:
-            raise AppError(ErrorCode.MEDIA_NOT_OWNED, "Media not owned by user", 403)
+            raise AppError(ErrorCode.MEDIA_NOT_OWNED, "无权使用此媒体文件", 403)
         if media.post_id is not None:
-            raise AppError(ErrorCode.MEDIA_ALREADY_USED, "Media already used", 400)
+            raise AppError(ErrorCode.MEDIA_ALREADY_USED, "此媒体文件已被使用", 400)
         if media.kind != "image":
-            raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Only image supported for comments", 400)
+            raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "评论仅支持图片", 400)
         image_path = media.file_path
         image_thumb_path = media.thumb_path
         image_large_path = media.large_path
@@ -227,14 +227,14 @@ def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
             .first()
         )
         if not parent:
-            raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Parent comment not found", 404)
+            raise AppError(ErrorCode.COMMENT_NOT_FOUND, "父评论不存在", 404)
         if not reply_to_user_id:
             reply_to_user_id = parent.user_id
 
     if reply_to_user_id:
         reply_to_user = db.query(User).filter(User.id == reply_to_user_id).first()
         if not reply_to_user:
-            raise AppError(ErrorCode.NOT_FOUND, "Reply-to user not found", 404)
+            raise AppError(ErrorCode.NOT_FOUND, "被回复用户不存在", 404)
 
     comment = Comment(
         post_id=post_id,
@@ -292,15 +292,15 @@ def delete_comment(db: Session, user: User, comment_id: int) -> None:
         db.query(Comment).filter(Comment.id == comment_id, Comment.deleted_at.is_(None)).first()
     )
     if not comment:
-        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "评论不存在", 404)
 
     post = db.query(Post).filter(Post.id == comment.post_id).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
 
     can_delete = comment.user_id == user.id or post.user_id == user.id or user.role == "admin"
     if not can_delete:
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to delete this comment", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权删除此评论", 403)
 
     comment.deleted_at = utcnow()
     db.commit()
@@ -310,19 +310,19 @@ def get_comment_image(
     db: Session, viewer_id: int | None, comment_id: int, spec: str
 ) -> tuple[Path, str]:
     if spec not in ("thumb", "large"):
-        raise AppError(ErrorCode.VALIDATION_ERROR, "Invalid spec", 400)
+        raise AppError(ErrorCode.VALIDATION_ERROR, "规格参数无效", 400)
 
     comment = (
         db.query(Comment).filter(Comment.id == comment_id, Comment.deleted_at.is_(None)).first()
     )
     if not comment:
-        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "评论不存在", 404)
 
     post = db.query(Post).filter(Post.id == comment.post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if viewer_id is None or not can_view_post(db, viewer_id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to view this media", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权查看此媒体", 403)
 
     if spec == "thumb":
         rel = comment.image_thumb_path
@@ -330,28 +330,28 @@ def get_comment_image(
         rel = comment.image_large_path
 
     if not rel:
-        raise AppError(ErrorCode.MEDIA_NOT_READY, "Media not ready yet", 404)
+        raise AppError(ErrorCode.MEDIA_NOT_READY, "媒体尚未就绪", 404)
 
     abs_path = filekit.resolve_within_storage(rel)
     if not abs_path:
-        raise AppError(ErrorCode.NOT_FOUND, "File not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "文件不存在", 404)
 
     return abs_path, "image/webp"
 
 
 def upload_comment_image(db: Session, user: User, file: UploadFile) -> dict:
     if not file.filename:
-        raise AppError(ErrorCode.VALIDATION_ERROR, "No file provided", 400)
+        raise AppError(ErrorCode.VALIDATION_ERROR, "未提供文件", 400)
 
     file.file.seek(0)
     content = file.file.read()
     max_size = settings.MEDIA_IMAGE_MAX_MB * 1024 * 1024
     if len(content) > max_size:
-        raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
+        raise AppError(ErrorCode.FILE_TOO_LARGE, "文件过大", 413)
 
     kind = filekit.detect_kind(content)
     if kind != "image":
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Only image supported for comments", 400)
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "评论仅支持图片", 400)
 
     filekit.check_size(kind, len(content))
     fmt, _img = filekit.validate_image(content)

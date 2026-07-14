@@ -55,7 +55,7 @@ def logout(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     auth_service.logout(response)
-    return {"message": "Logged out"}
+    return {"message": "已登出"}
 
 
 @router.post("/refresh", response_model=TokenOut)

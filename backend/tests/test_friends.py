@@ -97,7 +97,7 @@ def test_friend_request_sent(client: TestClient, db_session: Session) -> None:
         headers={"X-CSRF-Token": csrf},
     )
     assert resp.status_code == 200
-    assert resp.json()["message"] == "Friend request sent"
+    assert resp.json()["message"] == "好友请求已发送"
 
 
 def test_friend_request_self(client: TestClient) -> None:
@@ -211,7 +211,7 @@ def test_accept_request(client: TestClient, db_session: Session) -> None:
         headers={"X-CSRF-Token": csrf},
     )
     assert resp.status_code == 200
-    assert resp.json()["message"] == "Friend request accepted"
+    assert resp.json()["message"] == "已接受好友请求"
 
     resp = client.get("/api/v1/friends")
     assert len(resp.json()) == 1

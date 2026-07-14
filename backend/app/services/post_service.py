@@ -43,7 +43,7 @@ def _decode_cursor(cursor: str) -> tuple[datetime, int]:
         dt = datetime.strptime(parts[0], "%Y-%m-%d %H:%M:%S")
         return dt, int(parts[1])
     except Exception:
-        raise AppError(ErrorCode.INVALID_CURSOR, "Invalid cursor", 400) from None
+        raise AppError(ErrorCode.INVALID_CURSOR, "游标无效", 400) from None
 
 
 def _build_author(user: User) -> dict:
@@ -196,17 +196,17 @@ def _posts_to_out(db: Session, posts: list[Post], viewer_id: int) -> list[dict]:
 def create_post(db: Session, user: User, data: PostCreateIn) -> dict:
     if data.media_ids:
         if len(set(data.media_ids)) != len(data.media_ids):
-            raise AppError(ErrorCode.VALIDATION_ERROR, "Duplicate media id", 400)
+            raise AppError(ErrorCode.VALIDATION_ERROR, "存在重复的媒体 ID", 400)
         media_objs = db.query(PostMedia).filter(PostMedia.id.in_(data.media_ids)).all()
         media_by_id = {m.id: m for m in media_objs}
         for mid in data.media_ids:
             m = media_by_id.get(mid)
             if m is None:
-                raise AppError(ErrorCode.MEDIA_NOT_OWNED, "Media not found", 403)
+                raise AppError(ErrorCode.MEDIA_NOT_OWNED, "媒体文件不存在", 403)
             if m.owner_id != user.id:
-                raise AppError(ErrorCode.MEDIA_NOT_OWNED, "Media not owned by user", 403)
+                raise AppError(ErrorCode.MEDIA_NOT_OWNED, "无权使用此媒体文件", 403)
             if m.post_id is not None:
-                raise AppError(ErrorCode.MEDIA_ALREADY_USED, "Media already used", 400)
+                raise AppError(ErrorCode.MEDIA_ALREADY_USED, "此媒体文件已被使用", 400)
 
     post = Post(
         user_id=user.id,
@@ -293,18 +293,18 @@ def get_feed(db: Session, viewer_id: int, cursor: str | None, limit: int = 20) -
 def get_post(db: Session, viewer_id: int, post_id: int) -> dict:
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if not can_view_post(db, viewer_id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to view this post", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权查看此动态", 403)
     return post_to_out(db, post, viewer_id=viewer_id)
 
 
 def delete_post(db: Session, user: User, post_id: int) -> None:
     post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
     if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
     if post.user_id != user.id and user.role != "admin":
-        raise AppError(ErrorCode.FORBIDDEN, "No permission to delete this post", 403)
+        raise AppError(ErrorCode.FORBIDDEN, "无权删除此动态", 403)
     post.deleted_at = utcnow()
     db.commit()
 

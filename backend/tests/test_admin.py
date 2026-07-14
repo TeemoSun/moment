@@ -427,7 +427,7 @@ def test_admin_revoke_invite(client: TestClient, db_session: Session) -> None:
         headers={"X-CSRF-Token": client.cookies.get("moments_csrf")},
     )
     assert resp.status_code == 200
-    assert resp.json()["message"] == "Invite revoked"
+    assert resp.json()["message"] == "邀请码已失效"
 
     resp = client.get("/api/v1/admin/invites")
     statuses = {i["code"]: i["status"] for i in resp.json()["items"]}

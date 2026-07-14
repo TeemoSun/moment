@@ -36,7 +36,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const err = data as ErrorOut | null;
     const code = err?.code ?? "UNKNOWN";
-    const message = err?.message ?? `HTTP ${res.status}`;
+    const message = err?.message ?? `请求失败（HTTP ${res.status}）`;
     const detail = err?.detail ?? {};
 
     if (res.status === 401 && code === "AUTH_REQUIRED") {

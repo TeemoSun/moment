@@ -262,7 +262,7 @@ export default function SettingsPage() {
         <Tooltip title="点击修改头像" placement="right" variant="island">
           <img
             src={user.avatar_url}
-            alt="avatar"
+            alt="头像"
             onClick={() => fileInputRef.current?.click()}
             style={{
               width: 64,
