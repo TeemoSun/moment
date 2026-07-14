@@ -117,27 +117,31 @@ def renew_invite(db: Session, user: User, data: dict) -> dict:
     if not user.can_invite:
         raise AppError(ErrorCode.INVITE_DISABLED, "Invite permission disabled", 403)
     _sync_expired(db, user.id)
-    db.query(InviteCode).filter(
-        InviteCode.creator_id == user.id,
-        InviteCode.status == "active",
-    ).update({"status": "revoked"}, synchronize_session="fetch")
-    db.commit()
-    code = generate_invite_code(db)
-    expires_at = _compute_expires_at(data.get("duration_days"))
-    invite = InviteCode(
-        creator_id=user.id,
-        code=code,
-        status="active",
-        expires_at=expires_at,
+    active = (
+        db.query(InviteCode)
+        .filter(InviteCode.creator_id == user.id, InviteCode.status == "active")
+        .first()
     )
-    db.add(invite)
+    if not active:
+        raise AppError(
+            ErrorCode.INVITE_NOT_FOUND,
+            "No active invite to renew, create one first",
+            404,
+        )
+    duration_days = data.get("duration_days")
+    if duration_days is None:
+        active.expires_at = None
+    else:
+        now = utcnow()
+        base = active.expires_at if active.expires_at and active.expires_at > now else now
+        active.expires_at = base + timedelta(days=duration_days)
     db.commit()
-    db.refresh(invite)
+    db.refresh(active)
     return InviteOut(
-        id=invite.id,
-        code=invite.code,
-        status=invite.status,
-        expires_at=invite.expires_at,
-        created_at=invite.created_at,
-        used_by_id=invite.used_by_id,
+        id=active.id,
+        code=active.code,
+        status=active.status,
+        expires_at=active.expires_at,
+        created_at=active.created_at,
+        used_by_id=active.used_by_id,
     ).model_dump(mode="json")

@@ -230,6 +230,7 @@ def test_renew_invite(client: TestClient) -> None:
         headers={"X-CSRF-Token": csrf},
     )
     old_code = resp.json()["code"]
+    old_expires = resp.json()["expires_at"]
 
     resp = client.post(
         "/api/v1/invites/renew",
@@ -238,14 +239,29 @@ def test_renew_invite(client: TestClient) -> None:
     )
     assert resp.status_code == 200
     new_code = resp.json()["code"]
-    assert new_code != old_code
+    new_expires = resp.json()["expires_at"]
+    assert new_code == old_code
 
     resp = client.get("/api/v1/invites")
     data = resp.json()
-    assert len(data) == 2
-    statuses = {d["code"]: d["status"] for d in data}
-    assert statuses[old_code] == "revoked"
-    assert statuses[new_code] == "active"
+    assert len(data) == 1
+    assert data[0]["status"] == "active"
+    assert data[0]["expires_at"] > old_expires
+    assert new_expires == data[0]["expires_at"]
+
+
+def test_renew_invite_no_active(client: TestClient) -> None:
+    _init_system(client)
+    _login(client)
+
+    csrf = client.cookies.get("moments_csrf")
+    resp = client.post(
+        "/api/v1/invites/renew",
+        json={"duration_days": 30},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["code"] == "INVITE_NOT_FOUND"
 
 
 def test_invite_disabled(client: TestClient, db_session: Session) -> None:

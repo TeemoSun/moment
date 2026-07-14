@@ -73,7 +73,7 @@ export default function SettingsPage() {
     setInviteActionLoading(true);
     try {
       const renewed = await renewInvite({ duration_days: durationDays });
-      setInvites((prev) => [renewed, ...prev]);
+      setInvites((prev) => prev.map((inv) => (inv.id === renewed.id ? renewed : inv)));
       notify.success("已续期");
     } catch (err) {
       notify.error(err instanceof ApiError ? err.message : "续期失败");
