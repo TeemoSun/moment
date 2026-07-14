@@ -2,12 +2,11 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Title } from "animal-island-ui";
 import { usePostsStore } from "@/stores/posts";
-import { useAuthStore } from "@/stores/auth";
 import PostCard from "@/components/PostCard";
+import { notify } from "@/utils/notify";
 
 export default function FeedPage() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
   const { items, hasMore, loading, loadingMore, error, fetchFeed, refresh, removePost } =
     usePostsStore();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -33,6 +32,16 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, []);
 
+  const handleRefresh = async () => {
+    await refresh();
+    const state = usePostsStore.getState();
+    if (state.error) {
+      notify.error(state.error);
+    } else {
+      notify.success("已刷新");
+    }
+  };
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
       <div
@@ -48,25 +57,9 @@ export default function FeedPage() {
         <Title color="app-teal" size="middle">
           动态
         </Title>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button type="default" size="small" onClick={() => refresh()} loading={loading}>
-            刷新
-          </Button>
-          <Button type="default" size="small" onClick={() => navigate("/friends")}>
-            好友
-          </Button>
-          {user?.role === "admin" && (
-            <Button type="default" size="small" onClick={() => navigate("/admin")}>
-              管理后台
-            </Button>
-          )}
-          <Button type="default" size="small" onClick={() => navigate("/settings")}>
-            设置
-          </Button>
-          <Button type="primary" size="small" onClick={() => navigate("/post/create")}>
-            发动态
-          </Button>
-        </div>
+        <Button type="default" size="small" onClick={handleRefresh} loading={loading}>
+          刷新
+        </Button>
       </div>
 
       {loading && items.length === 0 && (

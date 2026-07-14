@@ -12,6 +12,8 @@ import {
 import type { FriendOut, FriendRequestOut } from "@/api/friends";
 import { ApiError } from "@/api/client";
 import { formatRelativeTime } from "@/utils/time";
+import { notify } from "@/utils/notify";
+import { useFriendsStore } from "@/stores/friends";
 
 export default function FriendsPage() {
   const navigate = useNavigate();
@@ -21,12 +23,13 @@ export default function FriendsPage() {
   const [error, setError] = useState("");
 
   const [email, setEmail] = useState("");
-  const [requestMsg, setRequestMsg] = useState("");
   const [requestLoading, setRequestLoading] = useState(false);
 
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeError, setRemoveError] = useState("");
+
+  const { fetchUnread, clearUnread } = useFriendsStore();
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +42,7 @@ export default function FriendsPage() {
         ]);
         setFriends(friendsData);
         setRequests(requestsData);
+        clearUnread();
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "加载失败");
       } finally {
@@ -46,18 +50,19 @@ export default function FriendsPage() {
       }
     };
     load();
-  }, []);
+    fetchUnread();
+  }, [clearUnread, fetchUnread]);
 
   const handleSendRequest = async () => {
     if (!email.trim()) return;
-    setRequestMsg("");
     setRequestLoading(true);
     try {
       await requestFriend({ email: email.trim() });
-      setRequestMsg("已发送");
+      notify.success("好友请求已发送");
       setEmail("");
+      fetchUnread();
     } catch (err) {
-      setRequestMsg(err instanceof ApiError ? err.message : "发送失败");
+      notify.error(err instanceof ApiError ? err.message : "发送失败");
     } finally {
       setRequestLoading(false);
     }
@@ -67,8 +72,10 @@ export default function FriendsPage() {
     try {
       await acceptFriendRequest(reqId);
       setRequests((prev) => prev.filter((r) => r.id !== reqId));
-    } catch {
-      // ignore
+      notify.success("已添加好友");
+      fetchUnread();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
     }
   };
 
@@ -76,8 +83,10 @@ export default function FriendsPage() {
     try {
       await rejectFriendRequest(reqId);
       setRequests((prev) => prev.filter((r) => r.id !== reqId));
-    } catch {
-      // ignore
+      notify.info("已拒绝");
+      fetchUnread();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
     }
   };
 
@@ -87,6 +96,7 @@ export default function FriendsPage() {
     try {
       await removeFriend(removingId);
       setFriends((prev) => prev.filter((f) => f.user.id !== removingId));
+      notify.success("已删除好友");
       setShowRemoveModal(false);
       setRemovingId(null);
     } catch (err) {
@@ -227,18 +237,6 @@ export default function FriendsPage() {
             发送请求
           </Button>
         </div>
-        {requestMsg && (
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 14,
-              fontWeight: 500,
-              color: requestMsg === "已发送" ? "#6fba2c" : "#e05a5a",
-            }}
-          >
-            {requestMsg}
-          </div>
-        )}
       </Card>
 
       {requests.length === 0 ? (

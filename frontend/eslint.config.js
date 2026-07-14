@@ -26,6 +26,8 @@ export default [
         Response: "readonly",
         URLSearchParams: "readonly",
         IntersectionObserver: "readonly",
+        MediaQueryListEvent: "readonly",
+        KeyboardEvent: "readonly",
         setInterval: "readonly",
         clearInterval: "readonly",
         setTimeout: "readonly",

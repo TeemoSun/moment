@@ -6,12 +6,9 @@ import { deletePost } from "@/api/posts";
 import { likePost } from "@/api/comments";
 import { formatRelativeTime } from "@/utils/time";
 import { ApiError } from "@/api/client";
-
-function getGridColumns(count: number): string {
-  if (count === 1) return "minmax(0, 300px)";
-  if (count <= 4) return "repeat(2, 1fr)";
-  return "repeat(3, 1fr)";
-}
+import { notify } from "@/utils/notify";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import Lightbox, { type LightboxImage } from "@/components/Lightbox";
 
 export default function PostCard({
   post,
@@ -21,12 +18,20 @@ export default function PostCard({
   onDelete?: (id: number) => void;
 }) {
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 639px)");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [lightbox, setLightbox] = useState<{ images: LightboxImage[]; index: number } | null>(null);
+
+  const getGridColumns = (count: number): string => {
+    if (count === 1) return isMobile ? "minmax(0, 100%)" : "minmax(0, 300px)";
+    if (count <= 4) return "repeat(2, 1fr)";
+    return "repeat(3, 1fr)";
+  };
 
   const handleLike = async () => {
     if (likeLoading) return;
@@ -42,9 +47,23 @@ export default function PostCard({
     } catch {
       setLiked(prevLiked);
       setLikeCount(prevCount);
+      notify.error("操作失败");
     } finally {
       setLikeLoading(false);
     }
+  };
+
+  const openLightbox = (clickedIndex: number) => {
+    const images: LightboxImage[] = post.media
+      .map((m) => {
+        const url = m.original_url || m.large_url || m.thumb_url;
+        if (!url) return null;
+        return { url, kind: m.kind === "video" ? "video" : "image" };
+      })
+      .filter((v): v is LightboxImage => v !== null);
+    if (images.length === 0) return;
+    const idx = Math.min(clickedIndex, images.length - 1);
+    setLightbox({ images, index: idx });
   };
 
   const handleDelete = async () => {
@@ -53,6 +72,7 @@ export default function PostCard({
     try {
       await deletePost(post.id);
       setShowDeleteModal(false);
+      notify.success("已删除");
       onDelete?.(post.id);
     } catch (err) {
       setDeleteError(err instanceof ApiError ? err.message : "删除失败");
@@ -125,7 +145,7 @@ export default function PostCard({
             gap: 4,
           }}
         >
-          {post.media.map((media) => (
+          {post.media.map((media, idx) => (
             <div
               key={media.id}
               style={{
@@ -136,10 +156,7 @@ export default function PostCard({
                 background: "#f0e8d8",
                 position: "relative",
               }}
-              onClick={() => {
-                const url = media.original_url || media.large_url;
-                if (url) window.open(url, "_blank");
-              }}
+              onClick={() => openLightbox(idx)}
             >
               {media.thumb_url ? (
                 <img
@@ -194,10 +211,11 @@ export default function PostCard({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 16,
+          gap: isMobile ? 12 : 16,
           marginTop: 12,
           paddingTop: 12,
           borderTop: "1.5px solid #e8dcc8",
+          flexWrap: "wrap",
         }}
       >
         <span
@@ -246,6 +264,14 @@ export default function PostCard({
           <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>
         )}
       </Modal>
+      {lightbox && (
+        <Lightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onIndexChange={(i) => setLightbox((prev) => (prev ? { ...prev, index: i } : null))}
+        />
+      )}
     </Card>
   );
 }

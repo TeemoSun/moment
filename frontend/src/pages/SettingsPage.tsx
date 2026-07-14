@@ -8,6 +8,7 @@ import { encryptPassword } from "@/utils/rsa";
 import { ApiError } from "@/api/client";
 import { listInvites, createInvite, revokeInvite, renewInvite } from "@/api/invites";
 import type { InviteOut } from "@/api/invites";
+import { notify } from "@/utils/notify";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -16,7 +17,6 @@ export default function SettingsPage() {
 
   const [nickname, setNickname] = useState(user?.nickname ?? "");
   const [signature, setSignature] = useState(user?.signature ?? "");
-  const [profileMsg, setProfileMsg] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
 
   const [oldPassword, setOldPassword] = useState("");
@@ -26,7 +26,6 @@ export default function SettingsPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
 
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarMsg, setAvatarMsg] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -61,8 +60,9 @@ export default function SettingsPage() {
     try {
       const newInvite = await createInvite({ duration_days: durationDays });
       setInvites((prev) => [newInvite, ...prev]);
+      notify.success("邀请码已生成");
     } catch (err) {
-      setInvitesError(err instanceof ApiError ? err.message : "生成邀请码失败");
+      notify.error(err instanceof ApiError ? err.message : "生成邀请码失败");
     } finally {
       setInviteActionLoading(false);
     }
@@ -74,8 +74,9 @@ export default function SettingsPage() {
     try {
       const renewed = await renewInvite({ duration_days: durationDays });
       setInvites((prev) => [renewed, ...prev]);
+      notify.success("已续期");
     } catch (err) {
-      setInvitesError(err instanceof ApiError ? err.message : "续期失败");
+      notify.error(err instanceof ApiError ? err.message : "续期失败");
     } finally {
       setInviteActionLoading(false);
     }
@@ -88,8 +89,9 @@ export default function SettingsPage() {
       setInvites((prev) =>
         prev.map((inv) => (inv.id === id ? { ...inv, status: "revoked" } : inv)),
       );
+      notify.info("邀请码已失效");
     } catch (err) {
-      setInvitesError(err instanceof ApiError ? err.message : "失效操作失败");
+      notify.error(err instanceof ApiError ? err.message : "失效操作失败");
     }
   };
 
@@ -97,10 +99,11 @@ export default function SettingsPage() {
     const link = `${window.location.origin}/register?invite=${code}`;
     try {
       await window.navigator.clipboard.writeText(link);
+      notify.success("邀请链接已复制");
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch {
-      setInvitesError("复制失败");
+      notify.error("复制失败");
     }
   };
 
@@ -129,7 +132,6 @@ export default function SettingsPage() {
 
   const handleProfileSave = async (e: FormEvent) => {
     e.preventDefault();
-    setProfileMsg("");
     setProfileSaving(true);
     try {
       const updated = await updateMe({
@@ -137,9 +139,9 @@ export default function SettingsPage() {
         signature: signature.trim() || undefined,
       });
       setUser(updated);
-      setProfileMsg("已保存");
+      notify.success("已保存");
     } catch (err) {
-      setProfileMsg(err instanceof ApiError ? err.message : "保存失败");
+      notify.error(err instanceof ApiError ? err.message : "保存失败");
     } finally {
       setProfileSaving(false);
     }
@@ -168,12 +170,13 @@ export default function SettingsPage() {
       const encOld = encryptPassword(public_key, oldPassword);
       const encNew = encryptPassword(public_key, newPassword);
       await changePassword({ old_password: encOld, new_password: encNew });
-      setPasswordMsg("密码已修改");
+      notify.success("密码已修改");
       setOldPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
+      setPasswordMsg("");
     } catch (err) {
-      setPasswordMsg(err instanceof ApiError ? err.message : "修改失败");
+      notify.error(err instanceof ApiError ? err.message : "修改失败");
     } finally {
       setPasswordSaving(false);
     }
@@ -185,15 +188,14 @@ export default function SettingsPage() {
 
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
-    setAvatarMsg("");
     setAvatarUploading(true);
 
     try {
       const res = await uploadAvatar(file);
       setUser({ ...user, avatar_url: res.avatar_url });
-      setAvatarMsg("头像已更新");
+      notify.success("头像已更新");
     } catch (err) {
-      setAvatarMsg(err instanceof ApiError ? err.message : "上传失败");
+      notify.error(err instanceof ApiError ? err.message : "上传失败");
     } finally {
       setAvatarUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -207,7 +209,7 @@ export default function SettingsPage() {
       clearUser();
       navigate("/login", { replace: true });
     } catch (err) {
-      setPasswordMsg(err instanceof ApiError ? err.message : "注销失败");
+      notify.error(err instanceof ApiError ? err.message : "注销失败");
     } finally {
       setDeactivating(false);
       setShowDeactivateModal(false);
@@ -278,18 +280,6 @@ export default function SettingsPage() {
             选择图片
           </Button>
         </div>
-        {avatarMsg && (
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 14,
-              fontWeight: 500,
-              color: avatarMsg.includes("失败") ? "#e05a5a" : "#6fba2c",
-            }}
-          >
-            {avatarMsg}
-          </div>
-        )}
       </Card>
 
       <Card style={{ marginTop: 24 }}>
@@ -336,17 +326,6 @@ export default function SettingsPage() {
               placeholder="一句话介绍自己"
             />
           </div>
-          {profileMsg && (
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 500,
-                color: profileMsg === "已保存" ? "#6fba2c" : "#e05a5a",
-              }}
-            >
-              {profileMsg}
-            </div>
-          )}
           <Button type="primary" htmlType="submit" loading={profileSaving}>
             保存
           </Button>
@@ -423,7 +402,7 @@ export default function SettingsPage() {
               style={{
                 fontSize: 14,
                 fontWeight: 500,
-                color: passwordMsg === "密码已修改" ? "#6fba2c" : "#e05a5a",
+                color: "#e05a5a",
               }}
             >
               {passwordMsg}

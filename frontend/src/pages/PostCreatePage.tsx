@@ -5,6 +5,7 @@ import { usePostsStore } from "@/stores/posts";
 import { createPost } from "@/api/posts";
 import { uploadMedia } from "@/api/media";
 import { ApiError } from "@/api/client";
+import { notify } from "@/utils/notify";
 
 interface MediaItem {
   id: string;
@@ -102,6 +103,7 @@ export default function PostCreatePage() {
         visibility,
       });
       prependPost(post);
+      notify.success("发布成功");
       navigate("/feed");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "发布失败");

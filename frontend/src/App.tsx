@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import RequireAuth from "@/components/RequireAuth";
+import Layout from "@/components/Layout";
 import InitPage from "@/pages/InitPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
@@ -72,7 +73,9 @@ function AppRoutes() {
         path="/feed"
         element={
           <RequireAuth>
-            <FeedPage />
+            <Layout>
+              <FeedPage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -80,7 +83,9 @@ function AppRoutes() {
         path="/post/create"
         element={
           <RequireAuth>
-            <PostCreatePage />
+            <Layout>
+              <PostCreatePage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -88,7 +93,9 @@ function AppRoutes() {
         path="/users/:userId"
         element={
           <RequireAuth>
-            <UserPage />
+            <Layout>
+              <UserPage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -96,7 +103,9 @@ function AppRoutes() {
         path="/posts/:postId"
         element={
           <RequireAuth>
-            <PostDetailPage />
+            <Layout>
+              <PostDetailPage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -104,7 +113,9 @@ function AppRoutes() {
         path="/settings"
         element={
           <RequireAuth>
-            <SettingsPage />
+            <Layout>
+              <SettingsPage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -112,7 +123,9 @@ function AppRoutes() {
         path="/friends"
         element={
           <RequireAuth>
-            <FriendsPage />
+            <Layout>
+              <FriendsPage />
+            </Layout>
           </RequireAuth>
         }
       />
@@ -120,7 +133,9 @@ function AppRoutes() {
         path="/admin"
         element={
           <RequireAuth role="admin">
-            <AdminPage />
+            <Layout>
+              <AdminPage />
+            </Layout>
           </RequireAuth>
         }
       />

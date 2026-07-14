@@ -13,6 +13,8 @@ import {
 import { useCommentsStore } from "@/stores/comments";
 import { formatRelativeTime } from "@/utils/time";
 import { ApiError } from "@/api/client";
+import { notify } from "@/utils/notify";
+import Lightbox, { type LightboxImage } from "@/components/Lightbox";
 
 interface ReplyState {
   parent_comment_id: number;
@@ -58,6 +60,7 @@ export default function PostDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<CommentOut | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [lightbox, setLightbox] = useState<{ images: LightboxImage[]; index: number } | null>(null);
 
   useEffect(() => {
     if (!postIdNum || isNaN(postIdNum)) return;
@@ -140,6 +143,7 @@ export default function PostDetailPage() {
       setContent("");
       setReplyState(null);
       handleRemoveImage();
+      notify.success("评论已发送");
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "发送评论失败");
     } finally {
@@ -167,11 +171,30 @@ export default function PostDetailPage() {
       await deleteComment(deleteTarget.id);
       removeComment(deleteTarget.id);
       setDeleteTarget(null);
+      notify.success("已删除");
     } catch (err) {
       setDeleteError(err instanceof ApiError ? err.message : "删除评论失败");
     } finally {
       setDeleting(false);
     }
+  };
+
+  const openPostLightbox = (clickedIndex: number) => {
+    if (!post) return;
+    const images: LightboxImage[] = post.media
+      .map((m) => {
+        const url = m.original_url || m.large_url || m.thumb_url;
+        if (!url) return null;
+        return { url, kind: m.kind === "video" ? "video" : "image" };
+      })
+      .filter((v): v is LightboxImage => v !== null);
+    if (images.length === 0) return;
+    const idx = Math.min(clickedIndex, images.length - 1);
+    setLightbox({ images, index: idx });
+  };
+
+  const openCommentLightbox = (url: string) => {
+    setLightbox({ images: [{ url, kind: "image" }], index: 0 });
   };
 
   if (postLoading) {
@@ -279,7 +302,7 @@ export default function PostDetailPage() {
               marginTop: 12,
             }}
           >
-            {post.media.map((m) => (
+            {post.media.map((m, idx) => (
               <div
                 key={m.id}
                 style={{
@@ -287,7 +310,9 @@ export default function PostDetailPage() {
                   borderRadius: 12,
                   overflow: "hidden",
                   background: "#f0e8d8",
+                  cursor: "pointer",
                 }}
+                onClick={() => openPostLightbox(idx)}
               >
                 {m.thumb_url && (
                   <img
@@ -414,7 +439,7 @@ export default function PostDetailPage() {
                     }}
                     onClick={() => {
                       const url = comment.image_large_url || comment.image_thumb_url;
-                      if (url) window.open(url, "_blank");
+                      if (url) openCommentLightbox(url);
                     }}
                   />
                 </div>
@@ -681,6 +706,15 @@ export default function PostDetailPage() {
           <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>
         )}
       </Modal>
+
+      {lightbox && (
+        <Lightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onIndexChange={(i) => setLightbox((prev) => (prev ? { ...prev, index: i } : null))}
+        />
+      )}
     </div>
   );
 }

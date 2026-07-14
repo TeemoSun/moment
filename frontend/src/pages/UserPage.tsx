@@ -14,6 +14,7 @@ import {
   removeFriend,
   listFriendRequests,
 } from "@/api/friends";
+import { notify } from "@/utils/notify";
 
 export default function UserPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -29,11 +30,12 @@ export default function UserPage() {
   const [error, setError] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const [friendMsg, setFriendMsg] = useState("");
   const [friendLoading, setFriendLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [friendEmail, setFriendEmail] = useState("");
+  const [addModalError, setAddModalError] = useState("");
+  const [removeModalError, setRemoveModalError] = useState("");
 
   useEffect(() => {
     if (!userIdNum || isNaN(userIdNum)) return;
@@ -107,16 +109,16 @@ export default function UserPage() {
 
   const handleSendFriendRequest = async () => {
     if (!friendEmail.trim()) return;
-    setFriendMsg("");
     setFriendLoading(true);
+    setAddModalError("");
     try {
       await requestFriend({ email: friendEmail.trim() });
-      setFriendMsg("已发送");
+      notify.success("好友请求已发送");
       setFriendEmail("");
       setShowAddModal(false);
       await reloadUser();
     } catch (err) {
-      setFriendMsg(err instanceof ApiError ? err.message : "发送失败");
+      setAddModalError(err instanceof ApiError ? err.message : "发送失败");
     } finally {
       setFriendLoading(false);
     }
@@ -125,20 +127,19 @@ export default function UserPage() {
   const handleAcceptFriend = async () => {
     if (!user) return;
     setFriendLoading(true);
-    setFriendMsg("");
     try {
       const reqs = await listFriendRequests();
       const req = reqs.find((r) => r.requester.id === user.id);
       if (!req) {
-        setFriendMsg("未找到好友请求");
+        notify.error("未找到好友请求");
         setFriendLoading(false);
         return;
       }
       await acceptFriendRequest(req.id);
-      setFriendMsg("已接受");
+      notify.success("已添加好友");
       await reloadUser();
     } catch (err) {
-      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
     } finally {
       setFriendLoading(false);
     }
@@ -147,20 +148,19 @@ export default function UserPage() {
   const handleRejectFriend = async () => {
     if (!user) return;
     setFriendLoading(true);
-    setFriendMsg("");
     try {
       const reqs = await listFriendRequests();
       const req = reqs.find((r) => r.requester.id === user.id);
       if (!req) {
-        setFriendMsg("未找到好友请求");
+        notify.error("未找到好友请求");
         setFriendLoading(false);
         return;
       }
       await rejectFriendRequest(req.id);
-      setFriendMsg("已拒绝");
+      notify.info("已拒绝");
       await reloadUser();
     } catch (err) {
-      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
     } finally {
       setFriendLoading(false);
     }
@@ -169,14 +169,14 @@ export default function UserPage() {
   const handleRemoveFriend = async () => {
     if (!user) return;
     setFriendLoading(true);
-    setFriendMsg("");
+    setRemoveModalError("");
     try {
       await removeFriend(user.id);
-      setFriendMsg("已删除好友");
+      notify.success("已删除好友");
       setShowRemoveModal(false);
       await reloadUser();
     } catch (err) {
-      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+      setRemoveModalError(err instanceof ApiError ? err.message : "操作失败");
     } finally {
       setFriendLoading(false);
     }
@@ -297,21 +297,6 @@ export default function UserPage() {
               </Tag>
             )}
           </div>
-          {friendMsg && (
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 14,
-                fontWeight: 500,
-                color:
-                  friendMsg === "已发送" || friendMsg === "已接受" || friendMsg === "已删除好友"
-                    ? "#6fba2c"
-                    : "#e05a5a",
-              }}
-            >
-              {friendMsg}
-            </div>
-          )}
         </Card>
       )}
 
@@ -376,7 +361,7 @@ export default function UserPage() {
         title="加好友"
         onClose={() => {
           setShowAddModal(false);
-          setFriendMsg("");
+          setAddModalError("");
           setFriendEmail("");
         }}
         onOk={handleSendFriendRequest}
@@ -388,16 +373,16 @@ export default function UserPage() {
           onChange={(e) => setFriendEmail(e.target.value)}
           placeholder="对方邮箱"
         />
-        {friendMsg && (
+        {addModalError && (
           <div
             style={{
               marginTop: 8,
               fontSize: 14,
               fontWeight: 500,
-              color: friendMsg === "已发送" ? "#6fba2c" : "#e05a5a",
+              color: "#e05a5a",
             }}
           >
-            {friendMsg}
+            {addModalError}
           </div>
         )}
       </Modal>
@@ -407,14 +392,14 @@ export default function UserPage() {
         title="确认删除"
         onClose={() => {
           setShowRemoveModal(false);
-          setFriendMsg("");
+          setRemoveModalError("");
         }}
         onOk={handleRemoveFriend}
         typewriter={false}
       >
         <p style={{ margin: 0 }}>确定要删除这位好友吗？</p>
-        {friendMsg && (
-          <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{friendMsg}</p>
+        {removeModalError && (
+          <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{removeModalError}</p>
         )}
       </Modal>
     </div>

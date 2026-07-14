@@ -20,6 +20,7 @@ import type {
   AdminInviteOut,
 } from "@/api/admin";
 import { formatRelativeTime } from "@/utils/time";
+import { notify } from "@/utils/notify";
 
 const avatarStyle: CSSProperties = {
   width: 50,
@@ -232,6 +233,7 @@ export default function AdminPage() {
     setUserModalMsg("");
     try {
       await userModalAction();
+      notify.success("操作成功");
       setShowUserModal(false);
       setUserModalAction(null);
       loadUsers(usersPage, userSearch);
@@ -255,6 +257,7 @@ export default function AdminPage() {
     setDeletePostMsg("");
     try {
       await deletePost(deletePostId);
+      notify.success("已删除动态");
       setShowDeletePostModal(false);
       setDeletePostId(null);
       loadPosts(postsPage, postsVisibility, postsUserId);
@@ -271,6 +274,7 @@ export default function AdminPage() {
     setDeleteCommentMsg("");
     try {
       await deleteComment(deleteCommentId);
+      notify.success("已删除评论");
       setShowDeleteCommentModal(false);
       setDeleteCommentId(null);
       loadComments(commentsPage);
@@ -303,7 +307,7 @@ export default function AdminPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
             gap: 12,
           }}
         >
@@ -352,8 +356,8 @@ export default function AdminPage() {
   const usersTab = (
     <div>
       <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
             <Input
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
