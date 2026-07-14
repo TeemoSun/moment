@@ -21,7 +21,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 # ===== 读取 .env 配置 =====
-BACKEND_HOST="127.0.0.1"
+BACKEND_HOST="0.0.0.0"
 BACKEND_PORT="8000"
 if [ -f "$ROOT/.env" ]; then
   while IFS='=' read -r key value; do
@@ -64,11 +64,11 @@ echo "[dev] 启动前端 Vite dev server..."
     echo "[dev] 前端未安装依赖，执行 npm install..."
     npm install
   fi
-  npm run dev
+  npm run dev -- --host 0.0.0.0
 ) &
 PIDS+=($!)
 
-echo "[dev] 后端: http://${BACKEND_HOST}:${BACKEND_PORT}  | 前端: http://localhost:5173"
+echo "[dev] 后端: http://0.0.0.0:${BACKEND_PORT}  | 前端: http://0.0.0.0:5173"
 echo "[dev] 按 Ctrl+C 退出全部"
 
 wait -n
