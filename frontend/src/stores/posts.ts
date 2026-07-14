@@ -78,6 +78,13 @@ export const usePostsStore = create<PostsState>((set, get) => ({
   },
 
   clear: () => {
-    set({ items: [], nextCursor: null, hasMore: false, error: "", loading: false, loadingMore: false });
+    set({
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      error: "",
+      loading: false,
+      loadingMore: false,
+    });
   },
 }));

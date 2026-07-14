@@ -139,12 +139,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
             style={mediaStyle}
           />
         ) : (
-          <img
-            src={current.url}
-            alt=""
-            onClick={(e) => e.stopPropagation()}
-            style={mediaStyle}
-          />
+          <img src={current.url} alt="" onClick={(e) => e.stopPropagation()} style={mediaStyle} />
         ))}
 
       {hasNext && (

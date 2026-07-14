@@ -4,12 +4,7 @@ import { Button, Card, Modal } from "animal-island-ui";
 import type { PostOut } from "@/api/posts";
 import { getPost } from "@/api/posts";
 import type { CommentOut } from "@/api/comments";
-import {
-  createComment,
-  deleteComment,
-  likeComment,
-  uploadCommentImage,
-} from "@/api/comments";
+import { createComment, deleteComment, likeComment, uploadCommentImage } from "@/api/comments";
 import { useCommentsStore } from "@/stores/comments";
 import { formatRelativeTime } from "@/utils/time";
 import { ApiError } from "@/api/client";
@@ -232,12 +227,7 @@ export default function PostDetailPage() {
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
-      <Button
-        type="default"
-        size="small"
-        onClick={() => navigate(-1)}
-        style={{ marginBottom: 16 }}
-      >
+      <Button type="default" size="small" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
         返回
       </Button>
 
@@ -347,9 +337,7 @@ export default function PostDetailPage() {
 
       {commentsError && comments.length === 0 && (
         <div style={{ textAlign: "center", padding: 40 }}>
-          <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12 }}>
-            {commentsError}
-          </div>
+          <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12 }}>{commentsError}</div>
           <Button type="default" size="small" onClick={() => fetchComments(postIdNum)}>
             重试
           </Button>
@@ -574,8 +562,7 @@ export default function PostDetailPage() {
           }}
           onFocus={(e) => {
             e.target.style.borderColor = "#ffcc00";
-            e.target.style.boxShadow =
-              "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
+            e.target.style.boxShadow = "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
           }}
           onBlur={(e) => {
             e.target.style.borderColor = "#c4b89e";
@@ -702,9 +689,7 @@ export default function PostDetailPage() {
         {deleteError && (
           <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{deleteError}</p>
         )}
-        {deleting && (
-          <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>
-        )}
+        {deleting && <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>}
       </Modal>
 
       {lightbox && (

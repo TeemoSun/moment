@@ -56,20 +56,13 @@ export interface CommentMediaOut {
   status: string;
 }
 
-export function getComments(
-  postId: number,
-  page = 1,
-  pageSize = 20,
-): Promise<CommentListOut> {
+export function getComments(postId: number, page = 1, pageSize = 20): Promise<CommentListOut> {
   return getJson<CommentListOut>(
     `/api/v1/posts/${postId}/comments?page=${page}&page_size=${pageSize}`,
   );
 }
 
-export function createComment(
-  postId: number,
-  data: CommentCreateIn,
-): Promise<CommentOut> {
+export function createComment(postId: number, data: CommentCreateIn): Promise<CommentOut> {
   return postJson<CommentOut>(`/api/v1/posts/${postId}/comments`, data);
 }
 

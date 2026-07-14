@@ -105,11 +105,7 @@ export function getStats(): Promise<StatsOut> {
   return getJson<StatsOut>("/api/v1/admin/stats");
 }
 
-export function listUsers(
-  search?: string,
-  page = 1,
-  pageSize = 20,
-): Promise<AdminUserListOut> {
+export function listUsers(search?: string, page = 1, pageSize = 20): Promise<AdminUserListOut> {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   params.set("page", String(page));
@@ -117,10 +113,7 @@ export function listUsers(
   return getJson<AdminUserListOut>(`/api/v1/admin/users?${params.toString()}`);
 }
 
-export function updateUser(
-  userId: number,
-  data: AdminUserUpdateIn,
-): Promise<AdminUserOut> {
+export function updateUser(userId: number, data: AdminUserUpdateIn): Promise<AdminUserOut> {
   return patchJson<AdminUserOut>(`/api/v1/admin/users/${userId}`, data);
 }
 
@@ -142,10 +135,7 @@ export function deletePost(postId: number): Promise<void> {
   return deleteJson<void>(`/api/v1/admin/posts/${postId}`);
 }
 
-export function listComments(
-  page = 1,
-  pageSize = 20,
-): Promise<AdminCommentListOut> {
+export function listComments(page = 1, pageSize = 20): Promise<AdminCommentListOut> {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("page_size", String(pageSize));
@@ -156,10 +146,7 @@ export function deleteComment(commentId: number): Promise<void> {
   return deleteJson<void>(`/api/v1/admin/comments/${commentId}`);
 }
 
-export function listInvites(
-  page = 1,
-  pageSize = 20,
-): Promise<AdminInviteListOut> {
+export function listInvites(page = 1, pageSize = 20): Promise<AdminInviteListOut> {
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("page_size", String(pageSize));

@@ -260,9 +260,7 @@ export default function PostCard({
         {deleteError && (
           <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{deleteError}</p>
         )}
-        {deleting && (
-          <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>
-        )}
+        {deleting && <p style={{ color: "#9f927d", fontWeight: 600, marginTop: 8 }}>正在删除...</p>}
       </Modal>
       {lightbox && (
         <Lightbox

@@ -140,8 +140,7 @@ export default function PostCreatePage() {
           }}
           onFocus={(e) => {
             e.target.style.borderColor = "#ffcc00";
-            e.target.style.boxShadow =
-              "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
+            e.target.style.boxShadow = "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
           }}
           onBlur={(e) => {
             e.target.style.borderColor = "#c4b89e";

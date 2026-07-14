@@ -58,10 +58,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           gap: 8,
         }}
       >
-        <span
-          onClick={() => navigate("/feed")}
-          style={{ cursor: "pointer", flexShrink: 0 }}
-        >
+        <span onClick={() => navigate("/feed")} style={{ cursor: "pointer", flexShrink: 0 }}>
           <Title size="small" color="app-teal">
             Moments
           </Title>

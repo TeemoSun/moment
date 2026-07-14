@@ -176,10 +176,7 @@ export default function FriendsPage() {
               style={avatarStyle}
               onClick={() => navigate(`/users/${f.user.id}`)}
             />
-            <div
-              style={{ flex: 1, minWidth: 0 }}
-              onClick={() => navigate(`/users/${f.user.id}`)}
-            >
+            <div style={{ flex: 1, minWidth: 0 }} onClick={() => navigate(`/users/${f.user.id}`)}>
               <div
                 style={{
                   fontWeight: 700,
@@ -190,9 +187,7 @@ export default function FriendsPage() {
               >
                 {f.user.nickname}
               </div>
-              <div style={{ color: "#9f927d", fontSize: 13 }}>
-                {formatRelativeTime(f.since)}
-              </div>
+              <div style={{ color: "#9f927d", fontSize: 13 }}>{formatRelativeTime(f.since)}</div>
             </div>
             <Tag color="app-teal" size="small">
               好友
@@ -228,12 +223,7 @@ export default function FriendsPage() {
               placeholder="输入对方邮箱"
             />
           </div>
-          <Button
-            type="primary"
-            size="small"
-            onClick={handleSendRequest}
-            loading={requestLoading}
-          >
+          <Button type="primary" size="small" onClick={handleSendRequest} loading={requestLoading}>
             发送请求
           </Button>
         </div>

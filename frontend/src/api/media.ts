@@ -15,6 +15,10 @@ export function uploadMedia(file: File): Promise<MediaUploadOut> {
   return upload<MediaUploadOut>("/api/v1/media/upload", formData);
 }
 
-export function mediaUrl(postId: number, mediaId: number, spec: "thumb" | "large" | "original"): string {
+export function mediaUrl(
+  postId: number,
+  mediaId: number,
+  spec: "thumb" | "large" | "original",
+): string {
   return `/api/v1/posts/${postId}/media/${mediaId}/${spec}`;
 }
