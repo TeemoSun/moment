@@ -32,8 +32,7 @@ logs/
 *.swp
 
 # AGENTS
-.kilo/*
-!.kilo/skills/
+.kilo/
 .codegraph/
 
 # OS
