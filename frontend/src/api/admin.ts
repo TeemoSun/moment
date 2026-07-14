@@ -1,4 +1,4 @@
-import { getJson, patchJson, deleteJson } from "./client";
+import { getJson, patchJson, deleteJson, postJson } from "./client";
 
 export interface StatsOut {
   user_count: number;
@@ -151,4 +151,8 @@ export function listInvites(page = 1, pageSize = 20): Promise<AdminInviteListOut
   params.set("page", String(page));
   params.set("page_size", String(pageSize));
   return getJson<AdminInviteListOut>(`/api/v1/admin/invites?${params.toString()}`);
+}
+
+export function revokeInvite(inviteId: number): Promise<{ message: string }> {
+  return postJson<{ message: string }>(`/api/v1/admin/invites/${inviteId}/revoke`);
 }

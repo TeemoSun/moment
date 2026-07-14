@@ -11,6 +11,7 @@ import {
   listComments,
   deleteComment,
   listInvites,
+  revokeInvite,
 } from "@/api/admin";
 import type {
   StatsOut,
@@ -139,6 +140,10 @@ export default function AdminPage() {
   const [showDeleteCommentModal, setShowDeleteCommentModal] = useState(false);
   const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
   const [deleteCommentMsg, setDeleteCommentMsg] = useState("");
+
+  const [showRevokeInviteModal, setShowRevokeInviteModal] = useState(false);
+  const [revokeInviteId, setRevokeInviteId] = useState<number | null>(null);
+  const [revokeInviteMsg, setRevokeInviteMsg] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -278,6 +283,23 @@ export default function AdminPage() {
       loadComments(commentsPage);
     } catch (err) {
       setDeleteCommentMsg(err instanceof ApiError ? err.message : "删除失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRevokeInviteConfirm = async () => {
+    if (revokeInviteId === null) return;
+    setActionLoading(true);
+    setRevokeInviteMsg("");
+    try {
+      await revokeInvite(revokeInviteId);
+      notify.success("邀请码已失效");
+      setShowRevokeInviteModal(false);
+      setRevokeInviteId(null);
+      loadInvites(invitesPage);
+    } catch (err) {
+      setRevokeInviteMsg(err instanceof ApiError ? err.message : "操作失败");
     } finally {
       setActionLoading(false);
     }
@@ -983,6 +1005,21 @@ export default function AdminPage() {
                       ? `过期: ${parseUTC(inv.expires_at).toLocaleDateString()}`
                       : "永久"}
                   </span>
+                  {inv.status === "active" && (
+                    <Button
+                      type="default"
+                      size="small"
+                      danger
+                      style={{ marginLeft: "auto" }}
+                      onClick={() => {
+                        setRevokeInviteId(inv.id);
+                        setRevokeInviteMsg("");
+                        setShowRevokeInviteModal(true);
+                      }}
+                    >
+                      失效
+                    </Button>
+                  )}
                 </div>
                 <div
                   style={{
@@ -1143,6 +1180,26 @@ export default function AdminPage() {
         )}
         {actionLoading && (
           <p style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>删除中...</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={showRevokeInviteModal}
+        title="确认使邀请码失效"
+        onClose={() => {
+          setShowRevokeInviteModal(false);
+          setRevokeInviteId(null);
+          setRevokeInviteMsg("");
+        }}
+        onOk={handleRevokeInviteConfirm}
+        typewriter={false}
+      >
+        <p style={{ margin: 0 }}>确定要使此邀请码失效吗？此操作不可撤销。</p>
+        {revokeInviteMsg && (
+          <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{revokeInviteMsg}</p>
+        )}
+        {actionLoading && (
+          <p style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>处理中...</p>
         )}
       </Modal>
     </div>

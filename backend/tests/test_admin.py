@@ -414,3 +414,58 @@ def test_delete_post_not_found(client: TestClient) -> None:
     )
     assert resp.status_code == 404
     assert resp.json()["code"] == "NOT_FOUND"
+
+
+def test_admin_revoke_invite(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+
+    invite_id = _create_invite_in_db(db_session, 1, "CODE0001", "active")
+
+    resp = client.post(
+        f"/api/v1/admin/invites/{invite_id}/revoke",
+        headers={"X-CSRF-Token": client.cookies.get("moments_csrf")},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "Invite revoked"
+
+    resp = client.get("/api/v1/admin/invites")
+    statuses = {i["code"]: i["status"] for i in resp.json()["items"]}
+    assert statuses["CODE0001"] == "revoked"
+
+
+def test_admin_revoke_invite_not_found(client: TestClient) -> None:
+    _init_system(client)
+    _login(client)
+
+    resp = client.post(
+        "/api/v1/admin/invites/99999/revoke",
+        headers={"X-CSRF-Token": client.cookies.get("moments_csrf")},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["code"] == "INVITE_NOT_FOUND"
+
+
+def test_admin_revoke_invite_used(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+
+    invite_id = _create_invite_in_db(db_session, 1, "CODE0001", "used")
+
+    resp = client.post(
+        f"/api/v1/admin/invites/{invite_id}/revoke",
+        headers={"X-CSRF-Token": client.cookies.get("moments_csrf")},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["code"] == "INVITE_ALREADY_USED"
+
+
+def test_admin_revoke_invite_csrf_required(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+
+    invite_id = _create_invite_in_db(db_session, 1, "CODE0001", "active")
+
+    resp = client.post(f"/api/v1/admin/invites/{invite_id}/revoke")
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "CSRF_FAILED"

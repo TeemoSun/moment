@@ -328,3 +328,16 @@ def list_invites(db: Session, page: int, page_size: int) -> dict:
         page_size=page_size,
         has_more=has_more,
     ).model_dump(mode="json")
+
+
+def revoke_invite(db: Session, invite_id: int) -> dict:
+    invite = db.query(InviteCode).filter(InviteCode.id == invite_id).first()
+    if not invite:
+        raise AppError(ErrorCode.INVITE_NOT_FOUND, "Invite not found", 404)
+    if invite.status == "used":
+        raise AppError(ErrorCode.INVITE_ALREADY_USED, "Used invite cannot be revoked", 400)
+    if invite.status in ("revoked", "expired"):
+        return {"message": "Invite already inactive"}
+    invite.status = "revoked"
+    db.commit()
+    return {"message": "Invite revoked"}

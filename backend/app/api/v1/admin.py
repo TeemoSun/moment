@@ -16,6 +16,7 @@ from app.schemas.admin import (
     AdminUserUpdateIn,
     StatsOut,
 )
+from app.schemas.invite import InviteActionOut
 from app.services import admin_service
 
 router = APIRouter()
@@ -103,3 +104,13 @@ def list_invites(
     admin=Depends(require_admin),
 ) -> dict:
     return admin_service.list_invites(db, page, page_size)
+
+
+@router.post("/invites/{invite_id}/revoke", response_model=InviteActionOut)
+def revoke_invite(
+    invite_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    admin=Depends(require_admin),
+) -> dict:
+    return admin_service.revoke_invite(db, invite_id)
