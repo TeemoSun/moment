@@ -15,7 +15,7 @@ import FriendsPage from "@/pages/FriendsPage";
 import AdminPage from "@/pages/AdminPage";
 
 function AppRoutes() {
-  const { initialized, user, fetchInitialized, fetchMe } = useAuthStore();
+  const { initialized, user, bootstrapped, fetchInitialized, fetchMe } = useAuthStore();
   const location = useLocation();
   const startedRef = useRef(false);
 
@@ -29,12 +29,13 @@ function AppRoutes() {
       if (state.initialized && location.pathname !== "/init") {
         await fetchMe();
       }
+      useAuthStore.setState({ bootstrapped: true });
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (initialized === null) {
+  if (initialized === null || !bootstrapped) {
     return (
       <div
         style={{

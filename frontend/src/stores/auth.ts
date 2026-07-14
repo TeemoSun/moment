@@ -9,6 +9,7 @@ interface AuthState {
   user: MeOut | null;
   loading: boolean;
   initialized: boolean | null;
+  bootstrapped: boolean;
   fetchInitialized: () => Promise<void>;
   fetchMe: () => Promise<void>;
   setUser: (u: MeOut | null) => void;
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: false,
   initialized: null,
+  bootstrapped: false,
 
   fetchInitialized: async () => {
     try {
