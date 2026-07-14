@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, Tag, Modal, Button } from "animal-island-ui";
 import type { PostOut } from "@/api/posts";
 import { deletePost } from "@/api/posts";
+import { likePost } from "@/api/comments";
 import { formatRelativeTime } from "@/utils/time";
 import { ApiError } from "@/api/client";
 
@@ -19,9 +20,32 @@ export default function PostCard({
   post: PostOut;
   onDelete?: (id: number) => void;
 }) {
+  const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [likeCount, setLikeCount] = useState(post.like_count);
+  const [liked, setLiked] = useState(post.liked_by_me);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  const handleLike = async () => {
+    if (likeLoading) return;
+    const prevLiked = liked;
+    const prevCount = likeCount;
+    setLiked(!prevLiked);
+    setLikeCount(prevLiked ? prevCount - 1 : prevCount + 1);
+    setLikeLoading(true);
+    try {
+      const res = await likePost(post.id);
+      setLiked(res.liked_by_me);
+      setLikeCount(res.like_count);
+    } catch {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -178,14 +202,26 @@ export default function PostCard({
       >
         <span
           style={{
-            color: post.liked_by_me ? "#e05a5a" : "#9f927d",
+            color: liked ? "#e05a5a" : "#9f927d",
             fontSize: 14,
             fontWeight: 500,
+            cursor: "pointer",
+            userSelect: "none",
           }}
+          onClick={handleLike}
         >
-          {post.liked_by_me ? "♥" : "♡"} {post.like_count}
+          {liked ? "♥" : "♡"} {likeCount}
         </span>
-        <span style={{ color: "#9f927d", fontSize: 14, fontWeight: 500 }}>
+        <span
+          style={{
+            color: "#9f927d",
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+          onClick={() => navigate(`/posts/${post.id}`)}
+        >
           评论 {post.comment_count}
         </span>
         {post.is_owner && (

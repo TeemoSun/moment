@@ -9,6 +9,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import FeedPage from "@/pages/FeedPage";
 import PostCreatePage from "@/pages/PostCreatePage";
 import UserPage from "@/pages/UserPage";
+import PostDetailPage from "@/pages/PostDetailPage";
 
 function AppRoutes() {
   const { initialized, user, fetchInitialized, fetchMe } = useAuthStore();
@@ -86,6 +87,14 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <UserPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/posts/:postId"
+        element={
+          <RequireAuth>
+            <PostDetailPage />
           </RequireAuth>
         }
       />
