@@ -31,8 +31,7 @@ logs/
 .vscode/
 *.swp
 
-# AGENTS
-.kilo/
+# AGENTS（内部忽略交由 .kilo/.gitignore 管理）
 .codegraph/
 
 # OS
