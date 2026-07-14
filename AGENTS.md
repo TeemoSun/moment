@@ -64,7 +64,7 @@ Reach for CodeGraph BEFORE grep/find or reading files when you need to understan
 
 If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 
-## 代码修改工作流规范
+## 工作规范
 
 ### 1. 变更规模判定
 在执行任何代码修改前，必须先预估编辑行数：
