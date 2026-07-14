@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -28,6 +27,7 @@ from app.schemas.comment import (
 from app.schemas.common import AppError, ErrorCode
 from app.services.user_service import avatar_url_for
 from app.storage import filekit
+from app.utils.time import utcnow
 from app.utils.visibility import can_view_post
 
 
@@ -302,7 +302,7 @@ def delete_comment(db: Session, user: User, comment_id: int) -> None:
     if not can_delete:
         raise AppError(ErrorCode.FORBIDDEN, "No permission to delete this comment", 403)
 
-    comment.deleted_at = datetime.now(UTC)
+    comment.deleted_at = utcnow()
     db.commit()
 
 

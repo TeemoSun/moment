@@ -9,6 +9,7 @@ import { ApiError } from "@/api/client";
 import { listInvites, createInvite, revokeInvite, renewInvite } from "@/api/invites";
 import type { InviteOut } from "@/api/invites";
 import { notify } from "@/utils/notify";
+import { parseUTC } from "@/utils/time";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -136,9 +137,9 @@ export default function SettingsPage() {
 
   const formatExpiresAt = (expiresAt: string | null): string => {
     if (expiresAt === null) return "永久";
-    const expTime = new Date(expiresAt).getTime();
+    const expTime = parseUTC(expiresAt).getTime();
     if (expTime < Date.now()) return "已过期";
-    return new Date(expiresAt).toLocaleDateString();
+    return parseUTC(expiresAt).toLocaleDateString();
   };
 
   const getStatusTagColor = (status: string): "app-teal" | "app-yellow" | "default" => {
@@ -543,11 +544,7 @@ export default function SettingsPage() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <Button
-                    type="default"
-                    size="small"
-                    onClick={() => handleCopyLink(inv.code)}
-                  >
+                  <Button type="default" size="small" onClick={() => handleCopyLink(inv.code)}>
                     {copiedCode === inv.code ? "已复制" : "复制链接"}
                   </Button>
                   {inv.status === "active" && (

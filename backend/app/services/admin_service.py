@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -27,6 +25,7 @@ from app.schemas.admin import (
 )
 from app.schemas.common import AppError, ErrorCode
 from app.services.user_service import avatar_url_for
+from app.utils.time import utcnow
 
 
 def _build_admin_author(user: User) -> dict:
@@ -212,7 +211,7 @@ def delete_post(db: Session, post_id: int) -> None:
         raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
     if post.deleted_at is not None:
         return
-    post.deleted_at = datetime.now(UTC)
+    post.deleted_at = utcnow()
     db.commit()
 
 
@@ -283,7 +282,7 @@ def delete_comment(db: Session, comment_id: int) -> None:
         raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
     if comment.deleted_at is not None:
         return
-    comment.deleted_at = datetime.now(UTC)
+    comment.deleted_at = utcnow()
     db.commit()
 
 

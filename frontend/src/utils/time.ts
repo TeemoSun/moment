@@ -1,9 +1,10 @@
+export function parseUTC(dateStr: string): Date {
+  return new Date(`${dateStr}Z`);
+}
+
 export function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
-  const normalized = /[zZ]|[+-]\d{2}:?\d{2}$/.test(dateStr)
-    ? dateStr
-    : `${dateStr}Z`;
-  const then = new Date(normalized).getTime();
+  const then = parseUTC(dateStr).getTime();
   const diff = Math.max(0, now - then);
   const seconds = Math.floor(diff / 1000);
 

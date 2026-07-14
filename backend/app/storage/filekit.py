@@ -28,7 +28,7 @@ DANGEROUS_MIMES = {
 
 
 def detect_kind(content: bytes) -> str:
-    """用 filetype.guess 检测，返回 'image' 或 'video'。不支持/危险抛 AppError UNSUPPORTED_MEDIA 400。"""
+    """用 filetype.guess 检测，返回 'image' 或 'video'。不支持的抛 400。"""
     kind = filetype.guess(content)
     if kind is None:
         raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported or unrecognized file", 400)
@@ -49,7 +49,7 @@ def detect_kind_from_file(path: Path) -> str:
 
 
 def validate_image(content: bytes) -> tuple[str, Image.Image]:
-    """校验真实图片格式。返回 (format_lower_without_dot, PIL.Image)。失败抛 AppError UNSUPPORTED_MEDIA 400。"""
+    """校验真实图片格式，返回 (format_lower, PIL.Image)。失败抛 400。"""
     kind = filetype.guess(content)
     if kind is None or not kind.mime.startswith("image/"):
         raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid image file", 400)
@@ -82,7 +82,7 @@ def validate_image_file(path: Path) -> str:
 
 
 def validate_video(content: bytes) -> str:
-    """校验视频真实格式，返回 format_lower。失败抛 AppError UNSUPPORTED_MEDIA 400。用 filetype + ffprobe。"""
+    """校验视频真实格式，返回 format_lower。用 filetype + ffprobe。"""
     kind = filetype.guess(content)
     if kind is None or not kind.mime.startswith("video/"):
         raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Not a valid video file", 400)

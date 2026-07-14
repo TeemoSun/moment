@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 from fastapi import Response
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from app.models.invite_codes import InviteCode
 from app.models.users import User
 from app.schemas.auth import LoginIn, RegisterIn
 from app.schemas.common import AppError, ErrorCode
+from app.utils.time import utcnow
 
 
 def register(db: Session, data: RegisterIn) -> User:
@@ -27,7 +28,7 @@ def register(db: Session, data: RegisterIn) -> User:
     invite = db.query(InviteCode).filter(InviteCode.code == data.invite_code).first()
     if not invite or invite.status != "active" or invite.used_by_id is not None:
         raise AppError(ErrorCode.INVALID_INVITE, "Invalid invite code", 400)
-    if invite.expires_at and invite.expires_at <= datetime.now(UTC):
+    if invite.expires_at and invite.expires_at <= utcnow():
         raise AppError(ErrorCode.INVALID_INVITE, "Invalid invite code", 400)
 
     try:
@@ -73,11 +74,9 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
     if user.status == "deactivated":
         raise AppError(ErrorCode.ACCOUNT_DEACTIVATED, "Account deactivated", 403)
 
-    now = datetime.now(UTC)
+    now = utcnow()
     if user.locked_until:
         locked_until = user.locked_until
-        if locked_until.tzinfo is None:
-            locked_until = locked_until.replace(tzinfo=UTC)
         if locked_until > now:
             retry_after = int((locked_until - now).total_seconds())
             raise AppError(
@@ -114,7 +113,7 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
 def _increment_failed(db: Session, user: User) -> None:
     user.failed_login_count += 1
     if user.failed_login_count >= 5:
-        user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+        user.locked_until = utcnow() + timedelta(minutes=15)
         db.commit()
         raise AppError(
             ErrorCode.ACCOUNT_LOCKED,

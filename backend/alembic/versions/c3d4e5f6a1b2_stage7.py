@@ -22,14 +22,10 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Upgrade schema."""
     with op.batch_alter_table("invite_codes", schema=None) as batch_op:
-        batch_op.alter_column(
-            "expires_at", existing_type=sa.DateTime(), nullable=True
-        )
+        batch_op.alter_column("expires_at", existing_type=sa.DateTime(), nullable=True)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     with op.batch_alter_table("invite_codes", schema=None) as batch_op:
-        batch_op.alter_column(
-            "expires_at", existing_type=sa.DateTime(), nullable=False
-        )
+        batch_op.alter_column("expires_at", existing_type=sa.DateTime(), nullable=False)

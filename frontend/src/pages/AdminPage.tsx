@@ -19,7 +19,7 @@ import type {
   AdminCommentOut,
   AdminInviteOut,
 } from "@/api/admin";
-import { formatRelativeTime } from "@/utils/time";
+import { formatRelativeTime, parseUTC } from "@/utils/time";
 import { notify } from "@/utils/notify";
 
 const avatarStyle: CSSProperties = {
@@ -68,9 +68,7 @@ function PaginationBar({
       >
         上一页
       </Button>
-      <span style={{ color: "#9f927d", fontSize: 14, fontWeight: 500 }}>
-        第 {page} 页
-      </span>
+      <span style={{ color: "#9f927d", fontSize: 14, fontWeight: 500 }}>第 {page} 页</span>
       <Button
         type="default"
         size="small"
@@ -483,7 +481,9 @@ export default function AdminPage() {
                     onClick={() => {
                       const newCanInvite = !u.can_invite;
                       openUserModal(
-                        newCanInvite ? `开启 ${u.nickname} 的邀请权限？` : `关闭 ${u.nickname} 的邀请权限？`,
+                        newCanInvite
+                          ? `开启 ${u.nickname} 的邀请权限？`
+                          : `关闭 ${u.nickname} 的邀请权限？`,
                         () => updateUser(u.id, { can_invite: newCanInvite }),
                       );
                     }}
@@ -665,10 +665,7 @@ export default function AdminPage() {
                   </div>
                   <div style={{ color: "#9f927d", fontSize: 12 }}>{p.author.email}</div>
                 </div>
-                <Tag
-                  color={p.visibility === "public" ? "app-teal" : "app-yellow"}
-                  size="small"
-                >
+                <Tag color={p.visibility === "public" ? "app-teal" : "app-yellow"} size="small">
                   {p.visibility === "public" ? "公开" : "仅好友"}
                 </Tag>
                 {p.deleted && (
@@ -983,7 +980,7 @@ export default function AdminPage() {
                   </Tag>
                   <span style={{ color: "#9f927d", fontSize: 12 }}>
                     {inv.expires_at
-                      ? `过期: ${new Date(inv.expires_at).toLocaleDateString()}`
+                      ? `过期: ${parseUTC(inv.expires_at).toLocaleDateString()}`
                       : "永久"}
                   </span>
                 </div>

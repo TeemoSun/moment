@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from sqlalchemy.orm import Session
 
 from app.models.friendships import Friendship
@@ -12,6 +10,7 @@ from app.schemas.common import AppError, ErrorCode
 from app.schemas.friend import FriendOut, FriendRequestOut, FriendUserBrief
 from app.services.user_service import avatar_url_for
 from app.utils.friends import are_friends
+from app.utils.time import utcnow
 
 
 def _user_brief(user_obj: User) -> dict:
@@ -58,7 +57,7 @@ def request_friend(db: Session, user: User, data: dict) -> dict:
         user_b_id=hi,
         status="pending",
         requester_id=user.id,
-        created_at=datetime.now(UTC),
+        created_at=utcnow(),
     )
     db.add(f)
     db.commit()
@@ -99,7 +98,7 @@ def accept_request(db: Session, user: User, request_id: int) -> dict:
     if f.requester_id == user.id or not (f.user_a_id == user.id or f.user_b_id == user.id):
         raise AppError(ErrorCode.FORBIDDEN, "No permission to accept this request", 403)
     f.status = "accepted"
-    f.accepted_at = datetime.now(UTC)
+    f.accepted_at = utcnow()
     db.commit()
     return {"message": "Friend request accepted"}
 

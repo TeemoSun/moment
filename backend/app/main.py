@@ -190,6 +190,7 @@ if _frontend_dist.exists() and (_frontend_dist / "index.html").exists():
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_fallback(request: Request, full_path: str) -> Response:
     if full_path.startswith("api/") or full_path == "api":

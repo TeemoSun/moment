@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ from app.schemas.post import (
     UserPostsOut,
 )
 from app.services.user_service import avatar_url_for
+from app.utils.time import utcnow
 from app.utils.visibility import can_view_post
 
 
@@ -304,7 +305,7 @@ def delete_post(db: Session, user: User, post_id: int) -> None:
         raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
     if post.user_id != user.id and user.role != "admin":
         raise AppError(ErrorCode.FORBIDDEN, "No permission to delete this post", 403)
-    post.deleted_at = datetime.now(UTC)
+    post.deleted_at = utcnow()
     db.commit()
 
 

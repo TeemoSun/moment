@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.models.invite_codes import InviteCode
 from app.models.users import User
 from app.schemas.common import AppError, ErrorCode
 from app.schemas.invite import InviteActionOut, InviteOut
+from app.utils.time import utcnow
 
 INVITE_CODE_LENGTH = 8
 _INVITE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
@@ -28,11 +29,11 @@ def generate_invite_code(db: Session) -> str:
 def _compute_expires_at(duration_days: int | None) -> datetime | None:
     if duration_days is None:
         return None
-    return datetime.now(UTC) + timedelta(days=duration_days)
+    return utcnow() + timedelta(days=duration_days)
 
 
 def _sync_expired(db: Session, creator_id: int) -> None:
-    now = datetime.now(UTC)
+    now = utcnow()
     db.query(InviteCode).filter(
         InviteCode.creator_id == creator_id,
         InviteCode.status == "active",
