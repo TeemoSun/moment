@@ -1,12 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Button, Card } from "animal-island-ui";
+import { Button, Card, Tag, Modal, Input } from "animal-island-ui";
 import { getUser } from "@/api/me";
 import type { OtherUserOut } from "@/api/me";
 import type { PostOut } from "@/api/posts";
 import { getUserPosts } from "@/api/posts";
 import { ApiError } from "@/api/client";
 import PostCard from "@/components/PostCard";
+import {
+  requestFriend,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  removeFriend,
+  listFriendRequests,
+} from "@/api/friends";
 
 export default function UserPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -21,6 +28,12 @@ export default function UserPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const [friendMsg, setFriendMsg] = useState("");
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [friendEmail, setFriendEmail] = useState("");
 
   useEffect(() => {
     if (!userIdNum || isNaN(userIdNum)) return;
@@ -83,6 +96,92 @@ export default function UserPage() {
     setPosts((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const reloadUser = async () => {
+    try {
+      const userData = await getUser(userIdNum);
+      setUser(userData);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    if (!friendEmail.trim()) return;
+    setFriendMsg("");
+    setFriendLoading(true);
+    try {
+      await requestFriend({ email: friendEmail.trim() });
+      setFriendMsg("已发送");
+      setFriendEmail("");
+      setShowAddModal(false);
+      await reloadUser();
+    } catch (err) {
+      setFriendMsg(err instanceof ApiError ? err.message : "发送失败");
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
+  const handleAcceptFriend = async () => {
+    if (!user) return;
+    setFriendLoading(true);
+    setFriendMsg("");
+    try {
+      const reqs = await listFriendRequests();
+      const req = reqs.find((r) => r.requester.id === user.id);
+      if (!req) {
+        setFriendMsg("未找到好友请求");
+        setFriendLoading(false);
+        return;
+      }
+      await acceptFriendRequest(req.id);
+      setFriendMsg("已接受");
+      await reloadUser();
+    } catch (err) {
+      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
+  const handleRejectFriend = async () => {
+    if (!user) return;
+    setFriendLoading(true);
+    setFriendMsg("");
+    try {
+      const reqs = await listFriendRequests();
+      const req = reqs.find((r) => r.requester.id === user.id);
+      if (!req) {
+        setFriendMsg("未找到好友请求");
+        setFriendLoading(false);
+        return;
+      }
+      await rejectFriendRequest(req.id);
+      setFriendMsg("已拒绝");
+      await reloadUser();
+    } catch (err) {
+      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!user) return;
+    setFriendLoading(true);
+    setFriendMsg("");
+    try {
+      await removeFriend(user.id);
+      setFriendMsg("已删除好友");
+      setShowRemoveModal(false);
+      await reloadUser();
+    } catch (err) {
+      setFriendMsg(err instanceof ApiError ? err.message : "操作失败");
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
@@ -142,6 +241,88 @@ export default function UserPage() {
         </div>
       </Card>
 
+      {user.friendship_status !== "self" && !user.is_deactivated && (
+        <Card style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {user.friendship_status === "none" && (
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => setShowAddModal(true)}
+                loading={friendLoading}
+              >
+                加好友
+              </Button>
+            )}
+            {user.friendship_status === "pending_sent" && (
+              <Tag color="app-yellow" size="small" variant="solid">
+                待对方确认
+              </Tag>
+            )}
+            {user.friendship_status === "pending_received" && (
+              <>
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={handleAcceptFriend}
+                  loading={friendLoading}
+                >
+                  接受好友
+                </Button>
+                <Button
+                  type="default"
+                  size="small"
+                  danger
+                  onClick={handleRejectFriend}
+                  loading={friendLoading}
+                >
+                  拒绝
+                </Button>
+              </>
+            )}
+            {user.friendship_status === "friends" && (
+              <Button
+                type="default"
+                size="small"
+                danger
+                onClick={() => setShowRemoveModal(true)}
+                loading={friendLoading}
+              >
+                删除好友
+              </Button>
+            )}
+            {user.friendship_status === "self" && (
+              <Tag color="app-teal" size="small">
+                这是你
+              </Tag>
+            )}
+          </div>
+          {friendMsg && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                color:
+                  friendMsg === "已发送" || friendMsg === "已接受" || friendMsg === "已删除好友"
+                    ? "#6fba2c"
+                    : "#e05a5a",
+              }}
+            >
+              {friendMsg}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {user.friendship_status === "self" && (
+        <Card style={{ marginTop: 12 }}>
+          <Tag color="app-teal" size="small">
+            这是你
+          </Tag>
+        </Card>
+      )}
+
       <div style={{ marginTop: 24 }}>
         {posts.length === 0 ? (
           <div
@@ -189,6 +370,53 @@ export default function UserPage() {
       )}
 
       <div ref={sentinelRef} style={{ height: 1 }} />
+
+      <Modal
+        open={showAddModal}
+        title="加好友"
+        onClose={() => {
+          setShowAddModal(false);
+          setFriendMsg("");
+          setFriendEmail("");
+        }}
+        onOk={handleSendFriendRequest}
+        typewriter={false}
+      >
+        <div style={{ marginBottom: 8 }}>请输入对方邮箱：</div>
+        <Input
+          value={friendEmail}
+          onChange={(e) => setFriendEmail(e.target.value)}
+          placeholder="对方邮箱"
+        />
+        {friendMsg && (
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 14,
+              fontWeight: 500,
+              color: friendMsg === "已发送" ? "#6fba2c" : "#e05a5a",
+            }}
+          >
+            {friendMsg}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={showRemoveModal}
+        title="确认删除"
+        onClose={() => {
+          setShowRemoveModal(false);
+          setFriendMsg("");
+        }}
+        onOk={handleRemoveFriend}
+        typewriter={false}
+      >
+        <p style={{ margin: 0 }}>确定要删除这位好友吗？</p>
+        {friendMsg && (
+          <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{friendMsg}</p>
+        )}
+      </Modal>
     </div>
   );
 }

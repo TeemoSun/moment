@@ -341,7 +341,10 @@ export default function SettingsPage() {
       </Card>
 
       <Card style={{ marginTop: 24 }}>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Button type="default" onClick={() => navigate("/friends")}>
+            好友列表
+          </Button>
           <Button type="default" onClick={handleLogout}>
             登出
           </Button>

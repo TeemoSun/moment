@@ -73,7 +73,7 @@ def get_other_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    return user_service.get_other_user(db, user_id)
+    return user_service.get_other_user(db, current_user.id, user_id)
 
 
 @router.get("/avatars/default")

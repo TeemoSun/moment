@@ -36,6 +36,7 @@ class OtherUserOut(BaseModel):
     avatar_url: str
     is_deactivated: bool
     created_at: datetime
+    friendship_status: str
 
 
 class AvatarOut(BaseModel):

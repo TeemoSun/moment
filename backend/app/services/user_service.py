@@ -141,13 +141,16 @@ def deactivate(db: Session, user: User) -> None:
     db.commit()
 
 
-def get_other_user(db: Session, user_id: int) -> dict:
+def get_other_user(db: Session, viewer_id: int, user_id: int) -> dict:
+    from app.services.friend_service import get_friendship_status
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise AppError(ErrorCode.NOT_FOUND, "User not found", 404)
 
     is_deactivated = user.status == "deactivated"
     avatar_url = "/api/v1/avatars/default" if is_deactivated else avatar_url_for(user)
+    friendship_status = get_friendship_status(db, viewer_id, user_id)
 
     return OtherUserOut(
         id=user.id,
@@ -156,4 +159,5 @@ def get_other_user(db: Session, user_id: int) -> dict:
         avatar_url=avatar_url,
         is_deactivated=is_deactivated,
         created_at=user.created_at,
+        friendship_status=friendship_status,
     ).model_dump(mode="json")

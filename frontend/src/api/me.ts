@@ -19,6 +19,7 @@ export interface OtherUserOut {
   avatar_url: string;
   is_deactivated: boolean;
   created_at: string;
+  friendship_status: string;
 }
 
 export interface MeUpdateIn {

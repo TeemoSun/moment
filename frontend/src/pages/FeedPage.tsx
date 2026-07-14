@@ -50,6 +50,9 @@ export default function FeedPage() {
           <Button type="default" size="small" onClick={() => refresh()} loading={loading}>
             刷新
           </Button>
+          <Button type="default" size="small" onClick={() => navigate("/friends")}>
+            好友
+          </Button>
           <Button type="default" size="small" onClick={() => navigate("/settings")}>
             设置
           </Button>
