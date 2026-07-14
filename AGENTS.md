@@ -38,7 +38,8 @@ Pre-commit hook (.githooks/pre-commit) runs the backend ruff/mypy + frontend esl
 
 ### Frontend gotchas
 
-- **`animal-island-ui` is loaded via CDN** in `frontend/index.html` (jsDelivr UMD script + CSS), not bundled, despite being a `package.json` dependency. Imports like `import { Card } from "animal-island-ui"` resolve to the global at runtime. When building UI in this repo, load the `animal-island-ui-style` skill for its conventions.
+- **`animal-island-ui` is bundled** by Vite via its npm package (ESM entry in `package.json` `exports`). Imports like `import { Card } from "animal-island-ui"` resolve to the local ES module; CSS comes from `import "animal-island-ui/style"` in `main.tsx`. No CDN/global is used. When building UI in this repo, load the `animal-island-ui-style` skill for its conventions.
+- **Fonts are self-hosted** via `@fontsource-variable/nunito` and `@fontsource-variable/noto-sans-sc` (imported via `wght.css` in `main.tsx` as variable fonts covering all weights). CSS `--animal-font-family` uses `'Nunito Variable'` / `'Noto Sans SC Variable'`. Do not re-add Google Fonts CDN links to `index.html`. Use the `@fontsource-variable/*` packages (which bundle woff2); the non-variable `@fontsource/*` packages for these fonts ship only woff, which breaks under the Vite SPA fallback.
 - Passwords are RSA-encrypted client-side before sending (`frontend/src/utils/rsa.ts` + `jsencrypt`); backend decrypts with `app/services/rsa_service.py` (key pair warmed up at startup via `_warmup_rsa`). Don't send plaintext passwords.
 - Vite dev server proxies `/api` → `http://localhost:${VITE_BACKEND_PORT}` (default 8000).
 

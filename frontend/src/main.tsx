@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "animal-island-ui/style";
+import "@fontsource-variable/nunito/wght.css";
+import "@fontsource-variable/noto-sans-sc/wght.css";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

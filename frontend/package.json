@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans-sc": "^5.2.10",
+    "@fontsource-variable/nunito": "^5.2.7",
     "animal-island-ui": "^1.2.2",
     "classnames": "^2.5.1",
     "jsencrypt": "^3.3.2",
