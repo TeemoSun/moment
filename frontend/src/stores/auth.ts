@@ -9,6 +9,7 @@ interface AuthState {
   user: MeOut | null;
   loading: boolean;
   initialized: boolean | null;
+  allowInsecureClipboard: boolean;
   bootstrapped: boolean;
   fetchInitialized: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -21,12 +22,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: false,
   initialized: null,
+  allowInsecureClipboard: false,
   bootstrapped: false,
 
   fetchInitialized: async () => {
     try {
       const res = await getInitialized();
-      set({ initialized: res.initialized });
+      set({
+        initialized: res.initialized,
+        allowInsecureClipboard: res.allow_insecure_clipboard ?? false,
+      });
     } catch {
       set({ initialized: false });
     }

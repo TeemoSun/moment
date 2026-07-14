@@ -12,7 +12,7 @@ import { notify } from "@/utils/notify";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { user, setUser, logout, clearUser } = useAuthStore();
+  const { user, setUser, logout, clearUser, allowInsecureClipboard } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [nickname, setNickname] = useState(user?.nickname ?? "");
@@ -97,11 +97,39 @@ export default function SettingsPage() {
 
   const handleCopyLink = async (code: string) => {
     const link = `${window.location.origin}/register?invite=${code}`;
-    try {
-      await window.navigator.clipboard.writeText(link);
+    const onCopied = () => {
       notify.success("邀请链接已复制");
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
+    };
+    try {
+      if (window.navigator.clipboard && window.isSecureContext) {
+        await window.navigator.clipboard.writeText(link);
+        onCopied();
+        return;
+      }
+      if (!allowInsecureClipboard) {
+        notify.error("复制失败");
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = link;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } finally {
+        document.body.removeChild(textarea);
+      }
+      if (ok) {
+        onCopied();
+      } else {
+        notify.error("复制失败");
+      }
     } catch {
       notify.error("复制失败");
     }

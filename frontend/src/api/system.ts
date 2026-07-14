@@ -3,6 +3,7 @@ import type { MeOut } from "./me";
 
 export interface InitializedOut {
   initialized: boolean;
+  allow_insecure_clipboard?: boolean;
 }
 
 export interface InitIn {

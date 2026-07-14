@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cookies import generate_csrf_token, set_auth_cookies
 from app.core.jwt import create_access_token
+from app.config import settings
 from app.database import get_db
 from app.schemas.auth import TokenOut
 from app.schemas.system import InitializedOut, InitIn
@@ -18,7 +19,10 @@ router = APIRouter()
 
 @router.get("/initialized", response_model=InitializedOut)
 def check_initialized(db: Session = Depends(get_db)) -> InitializedOut:
-    return InitializedOut(initialized=system_service.is_initialized(db))
+    return InitializedOut(
+        initialized=system_service.is_initialized(db),
+        allow_insecure_clipboard=settings.ALLOW_INSECURE_CLIPBOARD,
+    )
 
 
 @router.post("/init", response_model=TokenOut)
