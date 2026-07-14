@@ -1,4 +1,5 @@
-import { useEffect, useCallback, type CSSProperties } from "react";
+import { useEffect, useCallback, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 
 export interface LightboxImage {
   url: string;
@@ -15,6 +16,7 @@ interface LightboxProps {
 export default function Lightbox({ images, index, onClose, onIndexChange }: LightboxProps) {
   const hasPrev = images.length > 1 && index > 0;
   const hasNext = images.length > 1 && index < images.length - 1;
+  const [mounted, setMounted] = useState(false);
 
   const goPrev = useCallback(() => {
     if (hasPrev) onIndexChange?.(index - 1);
@@ -23,6 +25,21 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
   const goNext = useCallback(() => {
     if (hasNext) onIndexChange?.(index + 1);
   }, [hasNext, index, onIndexChange]);
+
+  useEffect(() => {
+    setMounted(true);
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -49,9 +66,11 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
     objectFit: "contain",
     borderRadius: 12,
     display: "block",
+    opacity: mounted ? 1 : 0,
+    transition: "opacity 0.2s ease",
   };
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -62,7 +81,8 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        animation: "ac-fade-in 0.25s ease",
+        opacity: mounted ? 1 : 0,
+        transition: "opacity 0.2s ease",
       }}
     >
       <button
@@ -135,11 +155,19 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
             src={current.url}
             controls
             autoPlay
+            playsInline
+            draggable={false}
             onClick={(e) => e.stopPropagation()}
             style={mediaStyle}
           />
         ) : (
-          <img src={current.url} alt="" onClick={(e) => e.stopPropagation()} style={mediaStyle} />
+          <img
+            src={current.url}
+            alt=""
+            draggable={false}
+            onClick={(e) => e.stopPropagation()}
+            style={mediaStyle}
+          />
         ))}
 
       {hasNext && (
@@ -192,6 +220,7 @@ export default function Lightbox({ images, index, onClose, onIndexChange }: Ligh
           {index + 1} / {images.length}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
