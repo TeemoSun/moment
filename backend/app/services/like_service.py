@@ -24,27 +24,30 @@ def toggle_post_like(db: Session, user: User, post_id: int) -> dict:
 
     _toggle(db, user, "post", post_id)
 
-    like_count = (
-        db.query(func.count(Like.id))
-        .filter(Like.target_type == "post", Like.target_id == post_id)
-        .scalar()
-    ) or 0
-    liked_by_me = (
-        db.query(Like.id)
+    return _like_status(db, user.id, "post", post_id)
+
+
+def unlike_post(db: Session, user: User, post_id: int) -> dict:
+    """显式取消点赞（DELETE 语义）。"""
+    post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
+    if not post:
+        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+    if not can_view_post(db, user.id, post):
+        raise AppError(ErrorCode.FORBIDDEN, "No permission", 403)
+
+    existing = (
+        db.query(Like)
         .filter(
             Like.target_type == "post",
             Like.target_id == post_id,
             Like.user_id == user.id,
         )
         .first()
-    ) is not None
-
-    return LikeCountOut(
-        target_type="post",
-        target_id=post_id,
-        like_count=like_count,
-        liked_by_me=liked_by_me,
-    ).model_dump(mode="json")
+    )
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return _like_status(db, user.id, "post", post_id)
 
 
 def toggle_comment_like(db: Session, user: User, comment_id: int) -> dict:
@@ -64,24 +67,57 @@ def toggle_comment_like(db: Session, user: User, comment_id: int) -> dict:
 
     _toggle(db, user, "comment", comment_id)
 
-    like_count = (
-        db.query(func.count(Like.id))
-        .filter(Like.target_type == "comment", Like.target_id == comment_id)
-        .scalar()
-    ) or 0
-    liked_by_me = (
-        db.query(Like.id)
+    return _like_status(db, user.id, "comment", comment_id)
+
+
+def unlike_comment(db: Session, user: User, comment_id: int) -> dict:
+    """显式取消评论点赞（DELETE 语义）。"""
+    comment = (
+        db.query(Comment).filter(Comment.id == comment_id, Comment.deleted_at.is_(None)).first()
+    )
+    if not comment:
+        raise AppError(ErrorCode.COMMENT_NOT_FOUND, "Comment not found", 404)
+
+    post = db.query(Post).filter(Post.id == comment.post_id, Post.deleted_at.is_(None)).first()
+    if not post:
+        raise AppError(ErrorCode.NOT_FOUND, "Post not found", 404)
+    if not can_view_post(db, user.id, post):
+        raise AppError(ErrorCode.FORBIDDEN, "No permission", 403)
+
+    existing = (
+        db.query(Like)
         .filter(
             Like.target_type == "comment",
             Like.target_id == comment_id,
             Like.user_id == user.id,
         )
         .first()
+    )
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return _like_status(db, user.id, "comment", comment_id)
+
+
+def _like_status(db: Session, user_id: int, target_type: str, target_id: int) -> dict:
+    like_count = (
+        db.query(func.count(Like.id))
+        .filter(Like.target_type == target_type, Like.target_id == target_id)
+        .scalar()
+    ) or 0
+    liked_by_me = (
+        db.query(Like.id)
+        .filter(
+            Like.target_type == target_type,
+            Like.target_id == target_id,
+            Like.user_id == user_id,
+        )
+        .first()
     ) is not None
 
     return LikeCountOut(
-        target_type="comment",
-        target_id=comment_id,
+        target_type=target_type,
+        target_id=target_id,
         like_count=like_count,
         liked_by_me=liked_by_me,
     ).model_dump(mode="json")

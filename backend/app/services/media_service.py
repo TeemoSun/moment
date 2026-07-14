@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 from fastapi import UploadFile
@@ -19,27 +21,56 @@ def upload_media(db: Session, user: User, file: UploadFile) -> dict:
     """通用上传：校验 -> 同步落盘 -> 写 PostMedia(未绑定) + FileMetadata -> 返回。
 
     后台任务由路由触发。
+    采用分块流式落盘，避免大文件全量读入内存。
     """
     if not file.filename:
         raise AppError(ErrorCode.VALIDATION_ERROR, "No file provided", 400)
-    file.file.seek(0)
-    content = file.file.read()
+
     max_any = max(settings.MEDIA_IMAGE_MAX_MB, settings.MEDIA_VIDEO_MAX_MB) * 1024 * 1024
-    if len(content) > max_any:
-        raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
-    kind = filekit.detect_kind(content)
-    filekit.check_size(kind, len(content))
-    if kind == "image":
-        fmt, _img = filekit.validate_image(content)
-        if fmt == "jpg":
-            fmt = "jpeg"
-        mime = f"image/{fmt}"
-    else:
-        fmt = filekit.validate_video(content)
-        mime = f"video/{fmt}"
     media_dir = filekit.get_media_dir()
+
+    # 先流式落盘到临时文件（带大小上限校验）
+    tmp_fd, tmp_name = tempfile.mkstemp(dir=media_dir, suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    os.close(tmp_fd)
+    try:
+        total = filekit.stream_to_file(file.file, tmp_path, max_any)
+    except AppError:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise
+    except Exception:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise AppError(ErrorCode.VALIDATION_ERROR, "Failed to read uploaded file", 400) from None
+
+    # 从临时文件检测真实格式
+    try:
+        kind = filekit.detect_kind_from_file(tmp_path)
+        filekit.check_size(kind, total)
+        if kind == "image":
+            fmt = filekit.validate_image_file(tmp_path)
+            if fmt == "jpg":
+                fmt = "jpeg"
+            mime = f"image/{fmt}"
+        else:
+            fmt = filekit.validate_video_file(tmp_path)
+            mime = f"video/{fmt}"
+    except AppError:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise
+
+    # 重命名为最终文件名
     filename = filekit.generate_filename(fmt)
-    abs_path = filekit.safe_save_bytes(media_dir, filename, content)
+    abs_path = media_dir / filename
+    tmp_path.rename(abs_path)
     storage_root = get_storage_root()
     rel_path = str(abs_path.relative_to(storage_root))
     media = PostMedia(
@@ -49,7 +80,7 @@ def upload_media(db: Session, user: User, file: UploadFile) -> dict:
         thumb_path=None,
         large_path=None,
         filename=filename,
-        size=len(content),
+        size=total,
         mime=mime,
         format=fmt,
         kind=kind,
@@ -62,7 +93,7 @@ def upload_media(db: Session, user: User, file: UploadFile) -> dict:
             storage_path=rel_path,
             original_name=file.filename or filename,
             filename=filename,
-            size=len(content),
+            size=total,
             mime=mime,
             format=fmt,
             kind=kind,

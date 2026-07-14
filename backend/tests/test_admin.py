@@ -186,7 +186,7 @@ def test_disable_user(client: TestClient, db_session: Session) -> None:
     assert resp.json()["status"] == "disabled"
 
     _set_user_token(client, user_id)
-    resp = client.get("/api/v1/users/me")
+    resp = client.get("/api/v1/me")
     assert resp.status_code == 403
     assert resp.json()["code"] == "ACCOUNT_DISABLED"
 

@@ -286,9 +286,14 @@ def test_refresh(client: TestClient) -> None:
     enc = _rsa_encrypt(pub, "TestPass123!")
     client.post("/api/v1/auth/login", json={"email": "admin@test.com", "password": enc})
 
-    resp = client.post("/api/v1/auth/refresh")
+    csrf = client.cookies.get("moments_csrf")
+    resp = client.post("/api/v1/auth/refresh", headers={"X-CSRF-Token": csrf})
     assert resp.status_code == 200
     assert resp.json()["user"]["email"] == "admin@test.com"
+
+    resp = client.post("/api/v1/auth/refresh")
+    assert resp.status_code == 403
+    assert resp.json()["code"] == "CSRF_FAILED"
 
 
 def test_weak_password_rejected(client: TestClient) -> None:

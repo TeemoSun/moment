@@ -64,6 +64,16 @@ def like_comment(
     return like_service.toggle_comment_like(db, current_user, comment_id)
 
 
+@router.delete("/comments/{comment_id}/likes", response_model=LikeCountOut)
+def unlike_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return like_service.unlike_comment(db, current_user, comment_id)
+
+
 @router.post("/posts/{post_id}/likes", response_model=LikeCountOut)
 def like_post(
     post_id: int,
@@ -72,6 +82,16 @@ def like_post(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     return like_service.toggle_post_like(db, current_user, post_id)
+
+
+@router.delete("/posts/{post_id}/likes", response_model=LikeCountOut)
+def unlike_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return like_service.unlike_post(db, current_user, post_id)
 
 
 @router.post("/comments/media", response_model=CommentMediaOut)

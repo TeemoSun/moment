@@ -81,8 +81,16 @@ export function likePost(postId: number): Promise<LikeCountOut> {
   return postJson<LikeCountOut>(`/api/v1/posts/${postId}/likes`);
 }
 
+export function unlikePost(postId: number): Promise<LikeCountOut> {
+  return deleteJson<LikeCountOut>(`/api/v1/posts/${postId}/likes`);
+}
+
 export function likeComment(commentId: number): Promise<LikeCountOut> {
   return postJson<LikeCountOut>(`/api/v1/comments/${commentId}/likes`);
+}
+
+export function unlikeComment(commentId: number): Promise<LikeCountOut> {
+  return deleteJson<LikeCountOut>(`/api/v1/comments/${commentId}/likes`);
 }
 
 export function uploadCommentImage(file: File): Promise<CommentMediaOut> {

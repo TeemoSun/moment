@@ -136,7 +136,7 @@ export default function SettingsPage() {
     try {
       const updated = await updateMe({
         nickname: nickname.trim() || undefined,
-        signature: signature.trim() || undefined,
+        signature: signature.trim(),
       });
       setUser(updated);
       notify.success("已保存");

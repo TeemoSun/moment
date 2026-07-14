@@ -38,5 +38,5 @@ export function logout(): Promise<void> {
 }
 
 export function refresh(): Promise<TokenOut> {
-  return postJson<TokenOut>("/api/v1/auth/refresh", undefined, { withCsrf: false });
+  return postJson<TokenOut>("/api/v1/auth/refresh", undefined, { withCsrf: true });
 }

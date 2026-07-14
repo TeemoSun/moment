@@ -16,6 +16,7 @@ from app.models.file_metadata import FileMetadata
 from app.models.users import User
 from app.schemas.common import AppError, ErrorCode
 from app.schemas.user import MeOut, MeUpdateIn, OtherUserOut, PasswordChangeIn
+from app.storage import filekit
 
 
 def avatar_url_for(user: User) -> str:
@@ -93,15 +94,20 @@ def upload_avatar(db: Session, user: User, file: UploadFile) -> User:
     if len(content) > max_size:
         raise AppError(ErrorCode.FILE_TOO_LARGE, "File too large", 413)
 
+    # 用 filekit 做真实格式校验 + 危险文件拒绝
+    kind = filekit.detect_kind(content)
+    if kind != "image":
+        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Avatar must be an image", 400)
+    filekit.check_size(kind, len(content))
+    fmt, _ = filekit.validate_image(content)
+    if fmt == "jpg":
+        fmt = "jpeg"
+
     try:
         Image.open(io.BytesIO(content)).verify()
         img = Image.open(io.BytesIO(content))
     except Exception:
         raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Invalid image file", 400) from None
-
-    fmt = (img.format or "").lower()
-    if fmt not in ("jpeg", "jpg", "png", "webp", "gif"):
-        raise AppError(ErrorCode.UNSUPPORTED_MEDIA, "Unsupported image format", 400)
 
     storage_root = get_storage_root()
     avatars_dir = storage_root / "avatars"

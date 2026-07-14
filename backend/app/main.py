@@ -14,6 +14,7 @@ from pathlib import Path
 from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from alembic import command
@@ -21,6 +22,13 @@ from app.config import BACKEND_ROOT, ENV_FILE, ensure_runtime_env, settings
 from app.schemas.common import AppError
 
 logger = logging.getLogger("app")
+
+
+def _guess_content_type(path: Path) -> str:
+    import mimetypes
+
+    ct, _ = mimetypes.guess_type(str(path))
+    return ct or "application/octet-stream"
 
 
 def _run_alembic_upgrade() -> None:
@@ -95,6 +103,8 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 if settings.CORS_ORIGINS:
     from fastapi.middleware.cors import CORSMiddleware
@@ -180,14 +190,31 @@ if _frontend_dist.exists() and (_frontend_dist / "index.html").exists():
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def spa_fallback(full_path: str) -> Response:
-        if full_path.startswith("api/") or full_path == "api":
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa_fallback(request: Request, full_path: str) -> Response:
+    if full_path.startswith("api/") or full_path == "api":
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-        file_path = _frontend_dist / full_path
-        if full_path and file_path.is_file():
-            return FileResponse(file_path)
+    file_path = _frontend_dist / full_path
+    if full_path and file_path.is_file():
+        return FileResponse(file_path)
 
-        index_file = _frontend_dist / "index.html"
-        return FileResponse(index_file)
+    # 尝试预压缩文件（br/gz），根据 Accept-Encoding 选择
+    accept_encoding = request.headers.get("accept-encoding", "")
+    for enc, ext in (("br", ".br"), ("gzip", ".gz")):
+        if enc in accept_encoding:
+            compressed = file_path.with_name(file_path.name + ext)
+            if compressed.is_file():
+                content_type = _guess_content_type(file_path)
+                return FileResponse(
+                    compressed,
+                    media_type=content_type,
+                    headers={
+                        "Content-Encoding": enc,
+                        "Cache-Control": "public, max-age=31536000, immutable",
+                        "Vary": "Accept-Encoding",
+                    },
+                )
+
+    index_file = _frontend_dist / "index.html"
+    return FileResponse(index_file)

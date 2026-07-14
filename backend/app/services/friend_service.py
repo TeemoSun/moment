@@ -15,7 +15,7 @@ from app.utils.friends import are_friends
 
 
 def _user_brief(user_obj: User) -> dict:
-    if user_obj.status != "active":
+    if user_obj.status == "deactivated":
         return FriendUserBrief(
             id=user_obj.id,
             nickname="已注销",
