@@ -2,6 +2,8 @@
 
 from app.database import Base
 from app.models.base import TimestampMixin
+from app.models.bot_reply_logs import BotReplyLog
+from app.models.bots import Bot
 from app.models.comments import Comment
 from app.models.file_metadata import FileMetadata
 from app.models.friendships import Friendship
@@ -15,6 +17,8 @@ from app.models.users import User
 
 __all__ = [
     "Base",
+    "Bot",
+    "BotReplyLog",
     "Comment",
     "FileMetadata",
     "Friendship",

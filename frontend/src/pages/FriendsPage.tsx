@@ -10,6 +10,8 @@ import {
   removeFriend,
 } from "@/api/friends";
 import type { FriendOut, FriendRequestOut } from "@/api/friends";
+import { listBotsPublic, addBotFriend, removeBotFriend } from "@/api/bots";
+import type { BotPublicOut } from "@/api/bots";
 import { ApiError } from "@/api/client";
 import { formatRelativeTime } from "@/utils/time";
 import { notify } from "@/utils/notify";
@@ -28,6 +30,11 @@ export default function FriendsPage() {
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeError, setRemoveError] = useState("");
+
+  const [bots, setBots] = useState<BotPublicOut[]>([]);
+  const [botsLoaded, setBotsLoaded] = useState(false);
+  const [botsLoading, setBotsLoading] = useState(false);
+  const [botActionLoading, setBotActionLoading] = useState(false);
 
   const { fetchUnread, clearUnread } = useFriendsStore();
 
@@ -101,6 +108,44 @@ export default function FriendsPage() {
       setRemovingId(null);
     } catch (err) {
       setRemoveError(err instanceof ApiError ? err.message : "删除失败");
+    }
+  };
+
+  const loadBots = async () => {
+    setBotsLoading(true);
+    try {
+      const data = await listBotsPublic();
+      setBots(data);
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "加载机器人列表失败");
+    } finally {
+      setBotsLoading(false);
+    }
+  };
+
+  const handleAddBotFriend = async (bot: BotPublicOut) => {
+    setBotActionLoading(true);
+    try {
+      await addBotFriend(bot.user_id);
+      notify.success("已添加机器人为好友");
+      await loadBots();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
+    } finally {
+      setBotActionLoading(false);
+    }
+  };
+
+  const handleRemoveBotFriend = async (bot: BotPublicOut) => {
+    setBotActionLoading(true);
+    try {
+      await removeBotFriend(bot.user_id);
+      notify.success("已删除机器人好友");
+      await loadBots();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
+    } finally {
+      setBotActionLoading(false);
     }
   };
 
@@ -288,6 +333,95 @@ export default function FriendsPage() {
     </div>
   );
 
+  const botsTab = (
+    <div>
+      {botsLoading && bots.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "#9f927d",
+            fontWeight: 500,
+            fontSize: 15,
+          }}
+        >
+          加载中...
+        </div>
+      ) : bots.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "#9f927d",
+            fontWeight: 500,
+            fontSize: 15,
+          }}
+        >
+          暂无机器人
+        </div>
+      ) : (
+        bots.map((bot) => (
+          <Card
+            key={bot.id}
+            style={{
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <img
+              src={bot.avatar_url}
+              alt={bot.nickname}
+              style={avatarStyle}
+              onClick={() => navigate(`/users/${bot.user_id}`)}
+            />
+            <div style={{ flex: 1, minWidth: 0 }} onClick={() => navigate(`/users/${bot.user_id}`)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: "#794f27",
+                    cursor: "pointer",
+                  }}
+                >
+                  {bot.nickname}
+                </span>
+                <Tag color="app-yellow" size="small">
+                  机器人
+                </Tag>
+              </div>
+              <div style={{ color: "#9f927d", fontSize: 13, marginTop: 2 }}>
+                {bot.persona_brief}
+              </div>
+            </div>
+            {bot.is_friend ? (
+              <Button
+                type="default"
+                size="small"
+                danger
+                loading={botActionLoading}
+                onClick={() => handleRemoveBotFriend(bot)}
+              >
+                删除好友
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                size="small"
+                loading={botActionLoading}
+                onClick={() => handleAddBotFriend(bot)}
+              >
+                加好友
+              </Button>
+            )}
+          </Card>
+        ))
+      )}
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-teal" size="middle">
@@ -295,9 +429,16 @@ export default function FriendsPage() {
       </Title>
       <div style={{ marginTop: 16 }}>
         <Tabs
+          onChange={(key) => {
+            if (key === "bots" && !botsLoaded) {
+              setBotsLoaded(true);
+              loadBots();
+            }
+          }}
           items={[
             { key: "friends", label: "好友列表", children: friendsTab },
             { key: "requests", label: "好友请求", children: requestsTab },
+            { key: "bots", label: "机器人", children: botsTab },
           ]}
         />
       </div>

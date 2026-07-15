@@ -234,8 +234,18 @@ export default function UserPage() {
           }}
         />
         <div>
-          <div style={{ fontWeight: 700, fontSize: 18, color: "#794f27" }}>{user.nickname}</div>
-          {user.signature && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 18, color: "#794f27" }}>{user.nickname}</span>
+            {user.is_bot && (
+              <Tag color="app-yellow" size="small">
+                机器人
+              </Tag>
+            )}
+          </div>
+          {user.is_bot && user.persona_brief && (
+            <div style={{ color: "#8a7b66", fontSize: 14, marginTop: 4 }}>{user.persona_brief}</div>
+          )}
+          {!user.is_bot && user.signature && (
             <div style={{ color: "#8a7b66", fontSize: 14, marginTop: 4 }}>{user.signature}</div>
           )}
         </div>

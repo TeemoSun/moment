@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Title, Tabs, Tag, Modal, Input } from "animal-island-ui";
 import { ApiError } from "@/api/client";
@@ -20,6 +20,15 @@ import type {
   AdminCommentOut,
   AdminInviteOut,
 } from "@/api/admin";
+import {
+  listBotsAdmin,
+  createBot,
+  updateBot,
+  deleteBot,
+  uploadBotAvatar,
+  triggerBotNow,
+} from "@/api/bots";
+import type { BotAdminOut, BotCreateIn, BotUpdateIn } from "@/api/bots";
 import { formatRelativeTime, parseUTC } from "@/utils/time";
 import { notify } from "@/utils/notify";
 
@@ -119,6 +128,35 @@ export default function AdminPage() {
   const [invitesHasMore, setInvitesHasMore] = useState(false);
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [invitesError, setInvitesError] = useState("");
+
+  const [bots, setBots] = useState<BotAdminOut[]>([]);
+  const [botsLoaded, setBotsLoaded] = useState(false);
+  const [botsLoading, setBotsLoading] = useState(false);
+  const [botsError, setBotsError] = useState("");
+
+  const [showCreateBotModal, setShowCreateBotModal] = useState(false);
+  const [showEditBotModal, setShowEditBotModal] = useState(false);
+  const [showDeleteBotModal, setShowDeleteBotModal] = useState(false);
+  const [editingBot, setEditingBot] = useState<BotAdminOut | null>(null);
+  const [deletingBotId, setDeletingBotId] = useState<number | null>(null);
+  const [botModalError, setBotModalError] = useState("");
+  const [botModalLoading, setBotModalLoading] = useState(false);
+
+  const [newBot, setNewBot] = useState<BotCreateIn>({
+    nickname: "",
+    persona: "",
+    poll_interval_n: 600,
+    poll_interval_x: 60,
+    lookback_days: 3,
+    comments_per_hour: 10,
+    max_consecutive_failures: 5,
+    llm_model: "",
+  });
+
+  const [editBot, setEditBot] = useState<BotUpdateIn>({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingBotId, setUploadingBotId] = useState<number | null>(null);
 
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -228,6 +266,176 @@ export default function AdminPage() {
     } finally {
       setInvitesLoading(false);
     }
+  };
+
+  const loadBots = async () => {
+    setBotsLoading(true);
+    setBotsError("");
+    try {
+      const data = await listBotsAdmin();
+      setBots(data);
+    } catch (err) {
+      setBotsError(err instanceof ApiError ? err.message : "加载机器人列表失败");
+    } finally {
+      setBotsLoading(false);
+    }
+  };
+
+  const handleCreateBot = async () => {
+    if (!newBot.nickname.trim() || !newBot.persona.trim()) {
+      setBotModalError("昵称和人设不能为空");
+      return;
+    }
+    setBotModalLoading(true);
+    setBotModalError("");
+    try {
+      const data: BotCreateIn = {
+        nickname: newBot.nickname.trim(),
+        persona: newBot.persona.trim(),
+      };
+      if (newBot.poll_interval_n !== undefined) data.poll_interval_n = newBot.poll_interval_n;
+      if (newBot.poll_interval_x !== undefined) data.poll_interval_x = newBot.poll_interval_x;
+      if (newBot.lookback_days !== undefined) data.lookback_days = newBot.lookback_days;
+      if (newBot.comments_per_hour !== undefined) data.comments_per_hour = newBot.comments_per_hour;
+      if (newBot.max_consecutive_failures !== undefined)
+        data.max_consecutive_failures = newBot.max_consecutive_failures;
+      if (newBot.llm_model && newBot.llm_model.trim()) data.llm_model = newBot.llm_model.trim();
+      await createBot(data);
+      notify.success("机器人已创建");
+      setShowCreateBotModal(false);
+      setNewBot({
+        nickname: "",
+        persona: "",
+        poll_interval_n: 600,
+        poll_interval_x: 60,
+        lookback_days: 3,
+        comments_per_hour: 10,
+        max_consecutive_failures: 5,
+        llm_model: "",
+      });
+      await loadBots();
+    } catch (err) {
+      setBotModalError(err instanceof ApiError ? err.message : "创建失败");
+    } finally {
+      setBotModalLoading(false);
+    }
+  };
+
+  const handleUpdateBot = async () => {
+    if (!editingBot) return;
+    if (editBot.nickname !== undefined && !editBot.nickname.trim()) {
+      setBotModalError("昵称不能为空");
+      return;
+    }
+    if (editBot.persona !== undefined && !editBot.persona.trim()) {
+      setBotModalError("人设不能为空");
+      return;
+    }
+    setBotModalLoading(true);
+    setBotModalError("");
+    try {
+      const data: BotUpdateIn = {};
+      if (editBot.nickname !== undefined) data.nickname = editBot.nickname.trim();
+      if (editBot.persona !== undefined) data.persona = editBot.persona.trim();
+      if (editBot.poll_interval_n !== undefined) data.poll_interval_n = editBot.poll_interval_n;
+      if (editBot.poll_interval_x !== undefined) data.poll_interval_x = editBot.poll_interval_x;
+      if (editBot.lookback_days !== undefined) data.lookback_days = editBot.lookback_days;
+      if (editBot.comments_per_hour !== undefined)
+        data.comments_per_hour = editBot.comments_per_hour;
+      if (editBot.max_consecutive_failures !== undefined)
+        data.max_consecutive_failures = editBot.max_consecutive_failures;
+      if (editBot.llm_model !== undefined) data.llm_model = editBot.llm_model;
+      if (editBot.enabled !== undefined) data.enabled = editBot.enabled;
+      if (editBot.restore !== undefined) data.restore = editBot.restore;
+      await updateBot(editingBot.id, data);
+      notify.success("机器人已更新");
+      setShowEditBotModal(false);
+      setEditingBot(null);
+      setEditBot({});
+      await loadBots();
+    } catch (err) {
+      setBotModalError(err instanceof ApiError ? err.message : "更新失败");
+    } finally {
+      setBotModalLoading(false);
+    }
+  };
+
+  const handleDeleteBot = async () => {
+    if (deletingBotId === null) return;
+    setBotModalLoading(true);
+    setBotModalError("");
+    try {
+      await deleteBot(deletingBotId);
+      notify.success("机器人已停用");
+      setShowDeleteBotModal(false);
+      setDeletingBotId(null);
+      await loadBots();
+    } catch (err) {
+      setBotModalError(err instanceof ApiError ? err.message : "删除失败");
+    } finally {
+      setBotModalLoading(false);
+    }
+  };
+
+  const handleToggleBotEnabled = async (bot: BotAdminOut) => {
+    try {
+      await updateBot(bot.id, { enabled: !bot.enabled });
+      notify.success(bot.enabled ? "机器人已停用" : "机器人已启用");
+      await loadBots();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
+    }
+  };
+
+  const handleRestoreBot = async (bot: BotAdminOut) => {
+    try {
+      await updateBot(bot.id, { restore: true });
+      notify.success("机器人已恢复");
+      await loadBots();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
+    }
+  };
+
+  const handleTriggerBot = async (bot: BotAdminOut) => {
+    try {
+      await triggerBotNow(bot.id);
+      notify.success("已触发轮询");
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "操作失败");
+    }
+  };
+
+  const handleUploadBotAvatar = async (botId: number, file: File) => {
+    setUploadingBotId(botId);
+    try {
+      await uploadBotAvatar(botId, file);
+      notify.success("头像已更新");
+      await loadBots();
+    } catch (err) {
+      notify.error(err instanceof ApiError ? err.message : "上传失败");
+    } finally {
+      setUploadingBotId(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const openEditBotModal = (bot: BotAdminOut) => {
+    setEditingBot(bot);
+    setEditBot({
+      nickname: bot.nickname,
+      persona: bot.persona,
+      poll_interval_n: bot.poll_interval_n,
+      poll_interval_x: bot.poll_interval_x,
+      lookback_days: bot.lookback_days,
+      comments_per_hour: bot.comments_per_hour,
+      max_consecutive_failures: bot.max_consecutive_failures,
+      llm_model: bot.llm_model || "",
+    });
+    setBotModalError("");
+    setShowEditBotModal(true);
   };
 
   const handleUserAction = async () => {
@@ -1075,6 +1283,187 @@ export default function AdminPage() {
     </div>
   );
 
+  const botsTab = (
+    <div>
+      <Card style={{ marginBottom: 16 }}>
+        <Button
+          type="primary"
+          size="small"
+          onClick={() => {
+            setBotModalError("");
+            setShowCreateBotModal(true);
+          }}
+        >
+          创建机器人
+        </Button>
+      </Card>
+
+      {botsError && (
+        <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12, fontSize: 14 }}>
+          {botsError}
+        </div>
+      )}
+
+      {!botsLoaded || botsLoading ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "#9f927d",
+            fontWeight: 500,
+            fontSize: 15,
+          }}
+        >
+          加载中...
+        </div>
+      ) : bots.length === 0 ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "#9f927d",
+            fontWeight: 500,
+            fontSize: 15,
+          }}
+        >
+          暂无机器人
+        </div>
+      ) : (
+        bots.map((bot) => (
+          <Card key={bot.id} style={{ marginBottom: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
+              <img
+                src={bot.avatar_url}
+                alt={bot.nickname}
+                style={avatarStyle}
+                onClick={() => navigate(`/users/${bot.user_id}`)}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#794f27" }}>
+                    {bot.nickname}
+                  </span>
+                  <Tag color={bot.enabled ? "app-teal" : "default"} size="small">
+                    {bot.enabled ? "启用" : "停用"}
+                  </Tag>
+                  {bot.auto_paused && (
+                    <Tag color="app-yellow" size="small">
+                      自动暂停
+                    </Tag>
+                  )}
+                </div>
+                <div style={{ color: "#9f927d", fontSize: 13 }}>{bot.email}</div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                color: "#725d42",
+                fontSize: 13,
+                marginBottom: 8,
+                wordBreak: "break-word",
+              }}
+            >
+              {bot.persona.length > 100 ? `${bot.persona.substring(0, 100)}...` : bot.persona}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                gap: 8,
+                marginBottom: 12,
+                fontSize: 12,
+                color: "#9f927d",
+              }}
+            >
+              <div>
+                间隔: {bot.poll_interval_n}s / {bot.poll_interval_x}
+              </div>
+              <div>限频: {bot.comments_per_hour}/h</div>
+              <div>回看: {bot.lookback_days}天</div>
+              <div>最大失败: {bot.max_consecutive_failures}</div>
+              {bot.llm_model && <div>模型: {bot.llm_model}</div>}
+              <div>连续失败: {bot.consecutive_failures}</div>
+              {bot.last_run_at && <div>上次: {formatRelativeTime(bot.last_run_at)}</div>}
+              {bot.next_run_at && <div>下次: {formatRelativeTime(bot.next_run_at)}</div>}
+            </div>
+
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <Button type="default" size="small" onClick={() => openEditBotModal(bot)}>
+                编辑
+              </Button>
+              <Button type="default" size="small" onClick={() => handleToggleBotEnabled(bot)}>
+                {bot.enabled ? "停用" : "启用"}
+              </Button>
+              {bot.auto_paused && (
+                <Button type="default" size="small" onClick={() => handleRestoreBot(bot)}>
+                  恢复
+                </Button>
+              )}
+              <Button type="default" size="small" onClick={() => handleTriggerBot(bot)}>
+                立即执行
+              </Button>
+              <Button
+                type="default"
+                size="small"
+                loading={uploadingBotId === bot.id}
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.setAttribute("data-bot-id", String(bot.id));
+                    fileInputRef.current.click();
+                  }
+                }}
+              >
+                上传头像
+              </Button>
+              <Button
+                type="default"
+                size="small"
+                danger
+                onClick={() => {
+                  setDeletingBotId(bot.id);
+                  setBotModalError("");
+                  setShowDeleteBotModal(true);
+                }}
+              >
+                停用
+              </Button>
+            </div>
+          </Card>
+        ))
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          const botId = e.target.getAttribute("data-bot-id");
+          if (file && botId) {
+            handleUploadBotAvatar(parseInt(botId, 10), file);
+          }
+        }}
+      />
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-teal">管理后台</Title>
@@ -1095,6 +1484,9 @@ export default function AdminPage() {
             } else if (key === "invites" && !invitesLoaded) {
               setInvitesLoaded(true);
               loadInvites(1);
+            } else if (key === "bots" && !botsLoaded) {
+              setBotsLoaded(true);
+              loadBots();
             }
           }}
           items={[
@@ -1118,6 +1510,11 @@ export default function AdminPage() {
               key: "invites",
               label: "邀请码管理",
               children: invitesTab,
+            },
+            {
+              key: "bots",
+              label: "机器人管理",
+              children: botsTab,
             },
           ]}
         />
@@ -1199,6 +1596,273 @@ export default function AdminPage() {
           <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{revokeInviteMsg}</p>
         )}
         {actionLoading && (
+          <p style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>处理中...</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={showCreateBotModal}
+        title="创建机器人"
+        onClose={() => {
+          setShowCreateBotModal(false);
+          setBotModalError("");
+        }}
+        onOk={handleCreateBot}
+        typewriter={false}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+              昵称
+            </div>
+            <Input
+              value={newBot.nickname}
+              onChange={(e) => setNewBot({ ...newBot, nickname: e.target.value })}
+              placeholder="机器人昵称"
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+              人设
+            </div>
+            <textarea
+              value={newBot.persona}
+              onChange={(e) => setNewBot({ ...newBot, persona: e.target.value })}
+              placeholder="机器人人设描述"
+              rows={4}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1.5px solid #c4b89e",
+                background: "rgb(247, 243, 223)",
+                color: "#794f27",
+                fontSize: 14,
+                fontFamily: "inherit",
+                resize: "vertical",
+              }}
+            />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>轮询间隔(秒)</div>
+              <Input
+                type="number"
+                value={newBot.poll_interval_n}
+                onChange={(e) =>
+                  setNewBot({ ...newBot, poll_interval_n: parseInt(e.target.value, 10) || 600 })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>随机偏移</div>
+              <Input
+                type="number"
+                value={newBot.poll_interval_x}
+                onChange={(e) =>
+                  setNewBot({ ...newBot, poll_interval_x: parseInt(e.target.value, 10) || 60 })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>回看天数</div>
+              <Input
+                type="number"
+                value={newBot.lookback_days}
+                onChange={(e) =>
+                  setNewBot({ ...newBot, lookback_days: parseInt(e.target.value, 10) || 3 })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>评论/小时</div>
+              <Input
+                type="number"
+                value={newBot.comments_per_hour}
+                onChange={(e) =>
+                  setNewBot({
+                    ...newBot,
+                    comments_per_hour: parseInt(e.target.value, 10) || 10,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>最大连续失败</div>
+              <Input
+                type="number"
+                value={newBot.max_consecutive_failures}
+                onChange={(e) =>
+                  setNewBot({
+                    ...newBot,
+                    max_consecutive_failures: parseInt(e.target.value, 10) || 5,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>LLM模型</div>
+              <Input
+                value={newBot.llm_model || ""}
+                onChange={(e) => setNewBot({ ...newBot, llm_model: e.target.value })}
+                placeholder="可选"
+              />
+            </div>
+          </div>
+        </div>
+        {botModalError && (
+          <div style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{botModalError}</div>
+        )}
+        {botModalLoading && (
+          <div style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>处理中...</div>
+        )}
+      </Modal>
+
+      <Modal
+        open={showEditBotModal}
+        title="编辑机器人"
+        onClose={() => {
+          setShowEditBotModal(false);
+          setEditingBot(null);
+          setEditBot({});
+          setBotModalError("");
+        }}
+        onOk={handleUpdateBot}
+        typewriter={false}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+              昵称
+            </div>
+            <Input
+              value={editBot.nickname || ""}
+              onChange={(e) => setEditBot({ ...editBot, nickname: e.target.value })}
+              placeholder="机器人昵称"
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+              人设
+            </div>
+            <textarea
+              value={editBot.persona || ""}
+              onChange={(e) => setEditBot({ ...editBot, persona: e.target.value })}
+              placeholder="机器人人设描述"
+              rows={4}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1.5px solid #c4b89e",
+                background: "rgb(247, 243, 223)",
+                color: "#794f27",
+                fontSize: 14,
+                fontFamily: "inherit",
+                resize: "vertical",
+              }}
+            />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>轮询间隔(秒)</div>
+              <Input
+                type="number"
+                value={editBot.poll_interval_n}
+                onChange={(e) =>
+                  setEditBot({
+                    ...editBot,
+                    poll_interval_n: parseInt(e.target.value, 10) || undefined,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>随机偏移</div>
+              <Input
+                type="number"
+                value={editBot.poll_interval_x}
+                onChange={(e) =>
+                  setEditBot({
+                    ...editBot,
+                    poll_interval_x: parseInt(e.target.value, 10) || undefined,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>回看天数</div>
+              <Input
+                type="number"
+                value={editBot.lookback_days}
+                onChange={(e) =>
+                  setEditBot({
+                    ...editBot,
+                    lookback_days: parseInt(e.target.value, 10) || undefined,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>评论/小时</div>
+              <Input
+                type="number"
+                value={editBot.comments_per_hour}
+                onChange={(e) =>
+                  setEditBot({
+                    ...editBot,
+                    comments_per_hour: parseInt(e.target.value, 10) || undefined,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>最大连续失败</div>
+              <Input
+                type="number"
+                value={editBot.max_consecutive_failures}
+                onChange={(e) =>
+                  setEditBot({
+                    ...editBot,
+                    max_consecutive_failures: parseInt(e.target.value, 10) || undefined,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>LLM模型</div>
+              <Input
+                value={editBot.llm_model || ""}
+                onChange={(e) => setEditBot({ ...editBot, llm_model: e.target.value })}
+                placeholder="可选"
+              />
+            </div>
+          </div>
+        </div>
+        {botModalError && (
+          <div style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{botModalError}</div>
+        )}
+        {botModalLoading && (
+          <div style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>处理中...</div>
+        )}
+      </Modal>
+
+      <Modal
+        open={showDeleteBotModal}
+        title="确认停用机器人"
+        onClose={() => {
+          setShowDeleteBotModal(false);
+          setDeletingBotId(null);
+          setBotModalError("");
+        }}
+        onOk={handleDeleteBot}
+        typewriter={false}
+      >
+        <p style={{ margin: 0 }}>确定要停用此机器人吗？</p>
+        {botModalError && (
+          <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{botModalError}</p>
+        )}
+        {botModalLoading && (
           <p style={{ color: "#9f927d", fontWeight: 500, marginTop: 8 }}>处理中...</p>
         )}
       </Modal>

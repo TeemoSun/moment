@@ -156,6 +156,14 @@ def get_other_user(db: Session, viewer_id: int, user_id: int) -> dict:
     avatar_url = "/api/v1/avatars/default" if is_deactivated else avatar_url_for(user)
     friendship_status = get_friendship_status(db, viewer_id, user_id)
 
+    is_bot = user.role == "bot"
+    persona_brief = None
+    if is_bot:
+        from app.models.bots import Bot
+
+        bot = db.query(Bot).filter(Bot.user_id == user.id).first()
+        persona_brief = bot.persona[:80] if bot else None
+
     return OtherUserOut(
         id=user.id,
         nickname=user.nickname,
@@ -164,4 +172,6 @@ def get_other_user(db: Session, viewer_id: int, user_id: int) -> dict:
         is_deactivated=is_deactivated,
         created_at=user.created_at,
         friendship_status=friendship_status,
+        is_bot=is_bot,
+        persona_brief=persona_brief,
     ).model_dump(mode="json")

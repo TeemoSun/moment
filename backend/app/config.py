@@ -142,6 +142,12 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = ""
 
+    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_TIMEOUT: int = 30
+    LLM_MAX_TOKENS: int = 300
+
     @field_validator("DB_URL", mode="before")
     @classmethod
     def _default_db_url(cls, v: Any) -> Any:

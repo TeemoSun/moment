@@ -37,6 +37,8 @@ class OtherUserOut(BaseModel):
     is_deactivated: bool
     created_at: datetime
     friendship_status: str
+    is_bot: bool = False
+    persona_brief: str | None = None
 
 
 class AvatarOut(BaseModel):

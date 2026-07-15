@@ -68,6 +68,9 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
     if not user:
         raise AppError(ErrorCode.INVALID_CREDENTIALS, "邮箱或密码错误", 401)
 
+    if user.role == "bot":
+        raise AppError(ErrorCode.BOT_LOGIN_FORBIDDEN, "机器人账号无法登录", 403)
+
     if user.status == "disabled":
         raise AppError(ErrorCode.ACCOUNT_DISABLED, "账号已被禁用", 403)
 

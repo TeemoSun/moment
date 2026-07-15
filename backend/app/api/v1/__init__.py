@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1 import admin, auth, comments, friends, invites, media, posts, system, users
+from app.api.v1 import (
+    admin,
+    auth,
+    bots_admin,
+    comments,
+    friends,
+    invites,
+    media,
+    posts,
+    system,
+    users,
+)
 
 router = APIRouter()
 router.include_router(system.router, prefix="/system", tags=["system"])
@@ -16,3 +27,4 @@ router.include_router(comments.router, tags=["comments"])
 router.include_router(friends.router, prefix="/friends", tags=["friends"])
 router.include_router(invites.router, prefix="/invites", tags=["invites"])
 router.include_router(admin.router, prefix="/admin", tags=["admin"])
+router.include_router(bots_admin.router, prefix="/admin/bots", tags=["admin-bots"])

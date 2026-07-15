@@ -20,6 +20,8 @@ export interface OtherUserOut {
   is_deactivated: boolean;
   created_at: string;
   friendship_status: string;
+  is_bot: boolean;
+  persona_brief: string | null;
 }
 
 export interface MeUpdateIn {

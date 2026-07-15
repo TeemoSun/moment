@@ -8,13 +8,14 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, verify_csrf
 from app.database import get_db
 from app.models.users import User
+from app.schemas.bot import BotPublicOut
 from app.schemas.friend import (
     FriendOut,
     FriendRequestActionOut,
     FriendRequestIn,
     FriendRequestOut,
 )
-from app.services import friend_service
+from app.services import bot_service, friend_service
 
 router = APIRouter()
 
@@ -74,3 +75,21 @@ def remove_friend(
 ) -> Response:
     friend_service.remove_friend(db, current_user, user_id)
     return Response(status_code=204)
+
+
+@router.get("/bots", response_model=list[BotPublicOut])
+def list_bots(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    return bot_service.list_bots_public(db, current_user)
+
+
+@router.post("/bots/{bot_user_id}", response_model=FriendRequestActionOut)
+def add_bot_friend(
+    bot_user_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    return bot_service.add_bot_friend(db, current_user, bot_user_id)

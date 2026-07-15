@@ -15,7 +15,7 @@ class User(TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('admin', 'user')",
+            "role IN ('admin', 'user', 'bot')",
             name="ck_users_role",
         ),
         CheckConstraint(

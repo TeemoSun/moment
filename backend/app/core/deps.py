@@ -34,6 +34,9 @@ def get_current_user(
     if not user:
         raise AppError(ErrorCode.AUTH_REQUIRED, "用户不存在", 401)
 
+    if user.role == "bot":
+        raise AppError(ErrorCode.AUTH_REQUIRED, "机器人账号无法访问", 401)
+
     if user.status == "deactivated":
         raise AppError(ErrorCode.ACCOUNT_DEACTIVATED, "账号已注销", 401)
 

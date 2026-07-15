@@ -94,7 +94,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _ensure_system_status()
     _warmup_rsa()
     logger.info("Moments backend started")
-    yield
+    from app.scheduler import start_scheduler
+
+    start_scheduler()
+    try:
+        yield
+    finally:
+        from app.scheduler import stop_scheduler
+
+        stop_scheduler()
 
 
 app = FastAPI(
