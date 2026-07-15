@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -44,6 +44,22 @@ def _decode_cursor(cursor: str) -> tuple[datetime, int]:
         return dt, int(parts[1])
     except Exception:
         raise AppError(ErrorCode.INVALID_CURSOR, "游标无效", 400) from None
+
+
+def _cursor_filter(c_dt: datetime, c_id: int):
+    """生成「严格在游标之前」的分页过滤条件。
+
+    游标以秒级精度编码，因此「同一秒」需用 [c_dt, c_dt+1s) 区间匹配，
+    以兼容数据库列中可能存在的微秒。
+    """
+    return or_(
+        Post.created_at < c_dt,
+        and_(
+            Post.created_at >= c_dt,
+            Post.created_at < c_dt + timedelta(seconds=1),
+            Post.id < c_id,
+        ),
+    )
 
 
 def _build_author(user: User) -> dict:
@@ -260,16 +276,7 @@ def get_feed(db: Session, viewer_id: int, cursor: str | None, limit: int = 20) -
 
     if cursor is not None:
         c_dt, c_id = _decode_cursor(cursor)
-        c_dt_str = c_dt.strftime("%Y-%m-%d %H:%M:%S")
-        from sqlalchemy import text
-
-        base_q = base_q.filter(
-            text(
-                "(strftime('%Y-%m-%d %H:%M:%S', posts.created_at) < :c_dt_str "
-                "OR (strftime('%Y-%m-%d %H:%M:%S', posts.created_at) = :c_dt_str "
-                "AND posts.id < :c_id))"
-            ).bindparams(c_dt_str=c_dt_str, c_id=c_id)
-        )
+        base_q = base_q.filter(_cursor_filter(c_dt, c_id))
 
     base_q = base_q.order_by(Post.created_at.desc(), Post.id.desc())
     rows = base_q.limit(limit + 1).all()
@@ -337,16 +344,7 @@ def get_user_posts(
 
     if cursor is not None:
         c_dt, c_id = _decode_cursor(cursor)
-        c_dt_str = c_dt.strftime("%Y-%m-%d %H:%M:%S")
-        from sqlalchemy import text
-
-        base_q = base_q.filter(
-            text(
-                "(strftime('%Y-%m-%d %H:%M:%S', posts.created_at) < :c_dt_str "
-                "OR (strftime('%Y-%m-%d %H:%M:%S', posts.created_at) = :c_dt_str "
-                "AND posts.id < :c_id))"
-            ).bindparams(c_dt_str=c_dt_str, c_id=c_id)
-        )
+        base_q = base_q.filter(_cursor_filter(c_dt, c_id))
 
     base_q = base_q.order_by(Post.created_at.desc(), Post.id.desc())
     rows = base_q.limit(limit + 1).all()

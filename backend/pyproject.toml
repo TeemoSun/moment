@@ -9,6 +9,7 @@ dependencies = [
     "gunicorn>=22",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
+    "psycopg[binary]>=3.2",
     "pyjwt>=2.8",
     "passlib[bcrypt]>=1.7.4",
     "cryptography>=43",

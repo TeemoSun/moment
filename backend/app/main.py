@@ -56,7 +56,7 @@ def _ensure_system_status() -> None:
             text(
                 "INSERT INTO system_status "
                 "(id, initialized, admin_user_id, created_at, updated_at) "
-                "SELECT 1, 0, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
+                "SELECT 1, false, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
                 "WHERE NOT EXISTS (SELECT 1 FROM system_status)"
             )
         )
@@ -84,9 +84,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         import app.config as _cfg
 
         _cfg.settings = _cfg._create_settings()
-    from app.database import ensure_data_dir
-
-    ensure_data_dir()
     from app.logging import setup_logging
 
     setup_logging()

@@ -115,6 +115,12 @@ class Settings(BaseSettings):
 
     DB_URL: str = ""
 
+    POSTGRES_USER: str = "moments"
+    POSTGRES_PASSWORD: str = "moments"
+    POSTGRES_DB: str = "moments"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+
     JWT_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_DAYS: int = 7
@@ -152,7 +158,7 @@ class Settings(BaseSettings):
     @classmethod
     def _default_db_url(cls, v: Any) -> Any:
         if not v:
-            return f"sqlite:///{(PROJECT_ROOT / 'data' / 'app.db').as_posix()}"
+            return "postgresql+psycopg://moments:moments@localhost:5432/moments"
         return v
 
     @field_validator("STORAGE_ROOT", "LOG_DIR", "FRONTEND_DIST", mode="before")
@@ -164,16 +170,6 @@ class Settings(BaseSettings):
         if p.is_absolute():
             return str(p)
         return str(PROJECT_ROOT / p)
-
-    @field_validator("DB_URL", mode="after")
-    @classmethod
-    def _sqlite_relative(cls, v: str) -> str:
-        if v.startswith("sqlite:///"):
-            db_path_str = v[len("sqlite:///") :]
-            db_path = Path(db_path_str)
-            if not db_path.is_absolute():
-                return f"sqlite:///{(PROJECT_ROOT / db_path_str).as_posix()}"
-        return v
 
 
 def _create_settings() -> Settings:

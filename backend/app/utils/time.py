@@ -1,4 +1,4 @@
-"""时间工具：统一使用 naive UTC，与 SQLite 存储保持一致。
+"""时间工具：统一使用 naive UTC，与数据库存储保持一致。
 
 仅用于"写入/比较数据库 DateTime 列"的场景，确保写入值与从 DB 读出的值类型一致
 （均为 naive）。JWT 的 exp/iat 等场景仍应使用 aware UTC（datetime.now(UTC)）。
