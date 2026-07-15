@@ -26,6 +26,7 @@ Backend lint/format/typecheck/test (run in `backend/`):
     ```
     然后 `docker compose down && docker compose up -d db`，并用 `docker exec moments-db pg_isready -U moments -d moments` 确认就绪再跑测试。用完可删除该 override 文件。
   - 若宿主机已自带监听 `localhost:5432` 的 PG（用 `.env` 的 `POSTGRES_*` 凭证可连），则无需 override，直接 `docker compose up -d db` 或用本地 PG 即可。
+  - **测试结束后务必清理**：跑完 pytest 后执行 `docker compose down`（从仓库根目录）停掉并移除 db 容器及临时网络，删除 override 文件（如有），保持环境干净。
 - single test: `uv run pytest tests/test_auth.py::TestClass::test_name -q`
 
 Frontend lint/format (run in `frontend/`):
