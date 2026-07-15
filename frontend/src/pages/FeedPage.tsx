@@ -43,7 +43,7 @@ export default function FeedPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
       <div
         style={{
           display: "flex",

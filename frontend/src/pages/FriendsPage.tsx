@@ -161,7 +161,7 @@ export default function FriendsPage() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
         <div
           style={{
             textAlign: "center",
@@ -179,7 +179,7 @@ export default function FriendsPage() {
 
   if (error) {
     return (
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
           <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12 }}>{error}</div>
           <Button type="default" size="small" onClick={() => navigate(-1)}>
@@ -423,7 +423,7 @@ export default function FriendsPage() {
   );
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-teal" size="middle">
         好友
       </Title>

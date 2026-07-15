@@ -29,8 +29,7 @@ export default function PostCard({
 
   const getGridColumns = (count: number): string => {
     if (count === 1) return isMobile ? "minmax(0, 100%)" : "minmax(0, 300px)";
-    if (count <= 4) return "repeat(2, 1fr)";
-    return "repeat(3, 1fr)";
+    return isMobile ? "repeat(auto-fill, minmax(0, 120px))" : "repeat(auto-fill, minmax(0, 300px))";
   };
 
   const handleLike = async () => {
