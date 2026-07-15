@@ -1,0 +1,46 @@
+# ===== 通用 =====
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+LICENSE
+README.md
+AGENTS.md
+docs/
+
+# IDE / 工具
+.idea/
+.vscode/
+.kilo/
+.codegraph/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== 环境变量（含密钥）=====
+.env
+.env.lock
+.env.local
+
+# ===== 后端：Python 缓存与虚拟环境 =====
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/**/*.egg-info/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.pytest_cache/
+
+# ===== 前端：node_modules 与本地构建产物 =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ===== 运行时数据（不应进镜像）=====
+data/
+logs/
+storage/
+*.db
+*.db-journal
