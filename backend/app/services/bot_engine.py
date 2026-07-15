@@ -150,12 +150,13 @@ def _build_author_context(
 
 
 def _get_post_images_b64(db: Session, post_id: int) -> list[str]:
+    """读取朋友圈图片（thumb 版）的 base64。"""
     media_rows = (
         db.query(PostMedia)
         .filter(
             PostMedia.post_id == post_id,
             PostMedia.kind == "image",
-            PostMedia.large_path.isnot(None),
+            PostMedia.thumb_path.isnot(None),
         )
         .order_by(PostMedia.sort_order)
         .all()
@@ -163,19 +164,19 @@ def _get_post_images_b64(db: Session, post_id: int) -> list[str]:
     storage_root = get_storage_root()
     result: list[str] = []
     for m in media_rows:
-        if not m.large_path:
+        if not m.thumb_path:
             continue
-        p = (storage_root / m.large_path).resolve()
+        p = (storage_root / m.thumb_path).resolve()
         if p.is_file():
             result.append(base64.b64encode(p.read_bytes()).decode())
     return result
 
 
 def _get_comment_image_b64(db: Session, comment: Comment) -> list[str]:
-    """读取评论附带图片（large 版）的 base64，无图返回空列表。"""
-    if not comment.image_large_path:
+    """读取评论附带图片（thumb 版）的 base64，无图返回空列表。"""
+    if not comment.image_thumb_path:
         return []
-    p = (get_storage_root() / comment.image_large_path).resolve()
+    p = (get_storage_root() / comment.image_thumb_path).resolve()
     if not p.is_file():
         return []
     return [base64.b64encode(p.read_bytes()).decode()]
