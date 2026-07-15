@@ -20,6 +20,13 @@ class ReplyToOut(BaseModel):
     is_deactivated: bool
 
 
+class LikeAuthorOut(BaseModel):
+    id: int
+    nickname: str
+    avatar_url: str
+    is_deactivated: bool
+
+
 class CommentOut(BaseModel):
     id: int
     post_id: int

@@ -23,6 +23,11 @@ from app.schemas.post import (
     PostOut,
     UserPostsOut,
 )
+from app.services.comment_service import (
+    _filter_comments_by_visibility,
+    _serialize_comments,
+    get_like_authors,
+)
 from app.services.user_service import avatar_url_for
 from app.utils.time import utcnow
 from app.utils.visibility import can_view_post
@@ -136,6 +141,7 @@ def post_to_out(db: Session, post: Post, viewer_id: int) -> dict:
         is_owner=post.user_id == viewer_id,
         created_at=post.created_at,
         updated_at=post.updated_at,
+        like_authors=get_like_authors(db, viewer_id, post),
     ).model_dump(mode="json")
 
 
@@ -191,6 +197,9 @@ def _posts_to_out(db: Session, posts: list[Post], viewer_id: int) -> list[dict]:
         author = authors.get(post.user_id)
         assert author is not None
         medias = media_by_post.get(post.id, [])
+        visible_comments = _filter_comments_by_visibility(db, viewer_id, post)
+        visible_comments.sort(key=lambda c: (c.created_at, c.id))
+        preview = _serialize_comments(db, viewer_id, post, visible_comments[:3])
         results.append(
             PostOut(
                 id=post.id,
@@ -204,6 +213,8 @@ def _posts_to_out(db: Session, posts: list[Post], viewer_id: int) -> list[dict]:
                 is_owner=post.user_id == viewer_id,
                 created_at=post.created_at,
                 updated_at=post.updated_at,
+                preview_comments=preview,
+                like_authors=get_like_authors(db, viewer_id, post),
             ).model_dump(mode="json")
         )
     return results

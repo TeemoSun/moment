@@ -22,6 +22,7 @@ from app.schemas.comment import (
     CommentListOut,
     CommentMediaOut,
     CommentOut,
+    LikeAuthorOut,
     ReplyToOut,
 )
 from app.schemas.common import AppError, ErrorCode
@@ -48,60 +49,18 @@ def _build_comment_author(user: User) -> dict:
     ).model_dump(mode="json")
 
 
-def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_size: int) -> dict:
-    post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
-    if not post:
-        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
-    if not can_view_post(db, viewer_id, post):
-        raise AppError(ErrorCode.FORBIDDEN, "无权查看此动态", 403)
+def _serialize_comments(
+    db: Session,
+    viewer_id: int,
+    post: Post,
+    comments: list[Comment],
+) -> list[dict]:
+    """将评论 ORM 列表序列化为 CommentOut dict 列表（含作者/回复/点赞等聚合信息）。
 
-    base_q = db.query(Comment).filter(
-        Comment.post_id == post_id,
-        Comment.deleted_at.is_(None),
-    )
-
-    if post.visibility == "friends":
-        friend_ids: set[int] = set()
-        friendships = (
-            db.query(Friendship)
-            .filter(
-                Friendship.status == "accepted",
-                Friendship.user_a_id == viewer_id,
-            )
-            .all()
-        )
-        for f in friendships:
-            friend_ids.add(f.user_b_id)
-        friendships = (
-            db.query(Friendship)
-            .filter(
-                Friendship.status == "accepted",
-                Friendship.user_b_id == viewer_id,
-            )
-            .all()
-        )
-        for f in friendships:
-            friend_ids.add(f.user_a_id)
-        allowed_user_ids = {viewer_id, post.user_id} | friend_ids
-        base_q = base_q.filter(Comment.user_id.in_(allowed_user_ids))
-
-    total = base_q.count()
-    offset = (page - 1) * page_size
-    comments = (
-        base_q.order_by(Comment.created_at.asc(), Comment.id.asc())
-        .offset(offset)
-        .limit(page_size)
-        .all()
-    )
-
+    复用方负责传入可见性过滤后的评论列表（如 friends 动态仅含允许作者的评论）。
+    """
     if not comments:
-        return CommentListOut(
-            items=[],
-            total=total,
-            page=page,
-            page_size=page_size,
-            has_more=False,
-        ).model_dump(mode="json")
+        return []
 
     author_ids = list({c.user_id for c in comments})
     reply_to_ids = list({c.reply_to_user_id for c in comments if c.reply_to_user_id})
@@ -127,7 +86,6 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
     )
     like_counts = {row[0]: row[1] for row in like_counts_rows}
 
-    liked_by_me_set: set[int] = set()
     liked_rows = (
         db.query(Like.target_id)
         .filter(
@@ -190,6 +148,130 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
                 created_at=c.created_at,
             ).model_dump(mode="json")
         )
+    return items
+
+
+def _allowed_user_ids(db: Session, viewer_id: int, post: Post) -> set[int]:
+    """可见用户白名单：viewer 本人 + 动态作者 + viewer 的好友。
+
+    friends 动态下，仅白名单内用户的评论/点赞名字对 viewer 可见；
+    public 动态下所有人可见（返回空集表示不限制）。
+    """
+    if post.visibility == "public":
+        return set()
+    friend_ids: set[int] = set()
+    for f in (
+        db.query(Friendship)
+        .filter(Friendship.status == "accepted", Friendship.user_a_id == viewer_id)
+        .all()
+    ):
+        friend_ids.add(f.user_b_id)
+    for f in (
+        db.query(Friendship)
+        .filter(Friendship.status == "accepted", Friendship.user_b_id == viewer_id)
+        .all()
+    ):
+        friend_ids.add(f.user_a_id)
+    return {viewer_id, post.user_id} | friend_ids
+
+
+def _filter_comments_by_visibility(db: Session, viewer_id: int, post: Post) -> list[Comment]:
+    """返回该动态下当前 viewer 可见的评论（已过滤 deleted_at，friends 动态额外过滤作者白名单）。"""
+    base_q = db.query(Comment).filter(
+        Comment.post_id == post.id,
+        Comment.deleted_at.is_(None),
+    )
+    allowed = _allowed_user_ids(db, viewer_id, post)
+    if allowed:
+        base_q = base_q.filter(Comment.user_id.in_(allowed))
+    return base_q.all()
+
+
+def get_like_authors(db: Session, viewer_id: int, post: Post, limit: int = 5) -> list[dict]:
+    """返回该动态的点赞者列表（按点赞时间倒序，受 friends 可见性过滤）。
+
+    可见规则与评论一致：public 动态所有点赞者可见；friends 动态仅本人/作者/好友可见。
+    """
+    q = (
+        db.query(Like)
+        .filter(Like.target_type == "post", Like.target_id == post.id)
+        .order_by(Like.created_at.desc(), Like.id.desc())
+    )
+    allowed = _allowed_user_ids(db, viewer_id, post)
+    if allowed:
+        q = q.filter(Like.user_id.in_(allowed))
+    likes = q.limit(limit).all()
+    user_ids = list({lk.user_id for lk in likes})
+    users = (
+        {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    )
+    return [_build_like_author(users[lk.user_id]) for lk in likes if lk.user_id in users]
+
+
+def _build_like_author(user: User) -> dict:
+    is_deactivated = user.status == "deactivated"
+    if is_deactivated:
+        return LikeAuthorOut(
+            id=user.id,
+            nickname="已注销",
+            avatar_url="/api/v1/avatars/default",
+            is_deactivated=True,
+        ).model_dump(mode="json")
+    return LikeAuthorOut(
+        id=user.id,
+        nickname=user.nickname,
+        avatar_url=avatar_url_for(user),
+        is_deactivated=False,
+    ).model_dump(mode="json")
+
+
+def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_size: int) -> dict:
+    post = db.query(Post).filter(Post.id == post_id, Post.deleted_at.is_(None)).first()
+    if not post:
+        raise AppError(ErrorCode.NOT_FOUND, "动态不存在", 404)
+    if not can_view_post(db, viewer_id, post):
+        raise AppError(ErrorCode.FORBIDDEN, "无权查看此动态", 403)
+
+    base_q = db.query(Comment).filter(
+        Comment.post_id == post_id,
+        Comment.deleted_at.is_(None),
+    )
+
+    if post.visibility == "friends":
+        friend_ids: set[int] = set()
+        friendships = (
+            db.query(Friendship)
+            .filter(
+                Friendship.status == "accepted",
+                Friendship.user_a_id == viewer_id,
+            )
+            .all()
+        )
+        for f in friendships:
+            friend_ids.add(f.user_b_id)
+        friendships = (
+            db.query(Friendship)
+            .filter(
+                Friendship.status == "accepted",
+                Friendship.user_b_id == viewer_id,
+            )
+            .all()
+        )
+        for f in friendships:
+            friend_ids.add(f.user_a_id)
+        allowed_user_ids = {viewer_id, post.user_id} | friend_ids
+        base_q = base_q.filter(Comment.user_id.in_(allowed_user_ids))
+
+    total = base_q.count()
+    offset = (page - 1) * page_size
+    comments = (
+        base_q.order_by(Comment.created_at.asc(), Comment.id.asc())
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+
+    items = _serialize_comments(db, viewer_id, post, comments)
 
     has_more = offset + page_size < total
     return CommentListOut(

@@ -481,3 +481,63 @@ def test_media_inaccessible_after_post_deleted(client: TestClient) -> None:
 
     resp = client.get(f"/api/v1/posts/{post_id}/media/{media_id}/original")
     assert resp.status_code == 404
+
+
+def test_feed_like_authors_visibility_friends(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+    post = _create_post_via_api(client, content="friends only", visibility="friends")
+    post_id = post["id"]
+
+    user_b_id = _create_user_in_db(db_session, "b@test.com", "UserB")
+    user_c_id = _create_user_in_db(db_session, "c@test.com", "UserC")
+    _create_friendship(db_session, 1, user_b_id)
+    _create_friendship(db_session, 1, user_c_id)
+
+    csrf = client.cookies.get("moments_csrf")
+    for uid in (user_b_id, user_c_id):
+        _set_user_token(client, uid)
+        resp = client.post(
+            f"/api/v1/posts/{post_id}/likes",
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert resp.status_code == 200
+
+    _set_user_token(client, user_b_id)
+    resp = client.get("/api/v1/feed")
+    assert resp.status_code == 200
+    item = resp.json()["items"][0]
+    author_ids = {a["id"] for a in item["like_authors"]}
+    assert user_b_id in author_ids
+    assert user_c_id not in author_ids
+
+    _set_user_token(client, user_c_id)
+    resp = client.get("/api/v1/feed")
+    assert resp.status_code == 200
+    item = resp.json()["items"][0]
+    author_ids = {a["id"] for a in item["like_authors"]}
+    assert user_c_id in author_ids
+    assert user_b_id not in author_ids
+
+
+def test_feed_like_authors_public(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+    post = _create_post_via_api(client, content="public", visibility="public")
+    post_id = post["id"]
+
+    liker_id = _create_user_in_db(db_session, "liker@test.com", "Liker")
+    csrf = client.cookies.get("moments_csrf")
+    _set_user_token(client, liker_id)
+    resp = client.post(
+        f"/api/v1/posts/{post_id}/likes",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert resp.status_code == 200
+
+    _set_user_token(client, liker_id)
+    resp = client.get("/api/v1/feed")
+    assert resp.status_code == 200
+    item = resp.json()["items"][0]
+    assert item["like_authors"][0]["nickname"] == "Liker"
+    assert item["like_authors"][0]["id"] == liker_id

@@ -42,6 +42,7 @@ export default function PostDetailPage() {
 
   const [content, setContent] = useState("");
   const [replyState, setReplyState] = useState<ReplyState | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [commentImage, setCommentImage] = useState<{
     file: File;
     previewUrl: string;
@@ -110,6 +111,14 @@ export default function PostDetailPage() {
   const handleRemoveImage = () => {
     if (commentImage) URL.revokeObjectURL(commentImage.previewUrl);
     setCommentImage(null);
+  };
+
+  const handleCancelComposer = () => {
+    setContent("");
+    setReplyState(null);
+    setSubmitError("");
+    handleRemoveImage();
+    setComposerOpen(false);
   };
 
   const handleSubmitComment = async () => {
@@ -315,6 +324,181 @@ export default function PostDetailPage() {
         )}
       </Card>
 
+      <Card style={{ marginBottom: 16 }}>
+        {!composerOpen ? (
+          <Button
+            type="dashed"
+            size="small"
+            onClick={() => setComposerOpen(true)}
+            style={{ width: "100%" }}
+          >
+            写评论...
+          </Button>
+        ) : (
+          <>
+            {replyState && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 8,
+                  color: "#794f27",
+                  fontSize: 13,
+                  fontWeight: 500,
+                }}
+              >
+                <span>回复 @{replyState.reply_to_nickname}</span>
+                <span
+                  style={{ cursor: "pointer", color: "#9f927d", fontSize: 12 }}
+                  onClick={() => setReplyState(null)}
+                >
+                  取消回复
+                </span>
+              </div>
+            )}
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="写下你的评论..."
+              maxLength={2000}
+              autoFocus
+              style={{
+                width: "100%",
+                minHeight: 80,
+                padding: "12px 16px",
+                background: "rgb(247, 243, 223)",
+                border: "2.5px solid #c4b89e",
+                borderRadius: 18,
+                color: "#725d42",
+                fontWeight: 500,
+                fontSize: 14,
+                lineHeight: 1.6,
+                resize: "vertical",
+                outline: "none",
+                fontFamily: "Nunito, 'Noto Sans SC', sans-serif",
+                boxSizing: "border-box",
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "#ffcc00";
+                e.target.style.boxShadow = "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "#c4b89e";
+                e.target.style.boxShadow = "none";
+              }}
+            />
+            <div
+              style={{
+                textAlign: "right",
+                color: content.length > 1900 ? "#e05a5a" : "#9f927d",
+                fontSize: 12,
+                fontWeight: 500,
+                marginTop: 4,
+              }}
+            >
+              {content.length} / 2000
+            </div>
+
+            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleFileSelect}
+                style={{ display: "none" }}
+              />
+              <Button
+                type="dashed"
+                size="small"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!!commentImage || submitting}
+              >
+                添加图片
+              </Button>
+              {commentImage && (
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <img
+                    src={commentImage.previewUrl}
+                    alt=""
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 8,
+                      objectFit: "cover",
+                    }}
+                  />
+                  {commentImage.uploading && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.3)",
+                        borderRadius: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      上传中
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    style={{
+                      position: "absolute",
+                      top: -6,
+                      right: -6,
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.5)",
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      padding: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {submitError && (
+              <div style={{ marginTop: 8, color: "#e05a5a", fontWeight: 500, fontSize: 13 }}>
+                {submitError}
+              </div>
+            )}
+
+            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <Button type="default" size="small" onClick={handleCancelComposer}>
+                取消
+              </Button>
+              <Button
+                type="primary"
+                size="small"
+                onClick={handleSubmitComment}
+                loading={submitting}
+                disabled={commentImage?.uploading}
+              >
+                发送
+              </Button>
+            </div>
+          </>
+        )}
+      </Card>
+
       <div style={{ marginBottom: 16, color: "#794f27", fontWeight: 700, fontSize: 16 }}>
         评论 ({comments.length})
       </div>
@@ -459,13 +643,14 @@ export default function PostDetailPage() {
                     fontWeight: 500,
                     userSelect: "none",
                   }}
-                  onClick={() =>
+                  onClick={() => {
                     setReplyState({
                       parent_comment_id: comment.id,
                       reply_to_user_id: comment.author.id,
                       reply_to_nickname: comment.author.nickname,
-                    })
-                  }
+                    });
+                    setComposerOpen(true);
+                  }}
                 >
                   回复
                 </span>
@@ -515,164 +700,6 @@ export default function PostDetailPage() {
           加载中...
         </div>
       )}
-
-      <Card style={{ marginTop: 24 }}>
-        {replyState && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 8,
-              color: "#794f27",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          >
-            <span>回复 @{replyState.reply_to_nickname}</span>
-            <span
-              style={{ cursor: "pointer", color: "#9f927d", fontSize: 12 }}
-              onClick={() => setReplyState(null)}
-            >
-              取消
-            </span>
-          </div>
-        )}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="写下你的评论..."
-          maxLength={2000}
-          style={{
-            width: "100%",
-            minHeight: 80,
-            padding: "12px 16px",
-            background: "rgb(247, 243, 223)",
-            border: "2.5px solid #c4b89e",
-            borderRadius: 18,
-            color: "#725d42",
-            fontWeight: 500,
-            fontSize: 14,
-            lineHeight: 1.6,
-            resize: "vertical",
-            outline: "none",
-            fontFamily: "Nunito, 'Noto Sans SC', sans-serif",
-            boxSizing: "border-box",
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = "#ffcc00";
-            e.target.style.boxShadow = "0 3px 0 0 #e0b800, 0 0 0 3px rgba(255, 204, 0, 0.15)";
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = "#c4b89e";
-            e.target.style.boxShadow = "none";
-          }}
-        />
-        <div
-          style={{
-            textAlign: "right",
-            color: content.length > 1900 ? "#e05a5a" : "#9f927d",
-            fontSize: 12,
-            fontWeight: 500,
-            marginTop: 4,
-          }}
-        >
-          {content.length} / 2000
-        </div>
-
-        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handleFileSelect}
-            style={{ display: "none" }}
-          />
-          <Button
-            type="dashed"
-            size="small"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={!!commentImage || submitting}
-          >
-            添加图片
-          </Button>
-          {commentImage && (
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img
-                src={commentImage.previewUrl}
-                alt=""
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 8,
-                  objectFit: "cover",
-                }}
-              />
-              {commentImage.uploading && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "rgba(0,0,0,0.3)",
-                    borderRadius: 8,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: 600,
-                  }}
-                >
-                  上传中
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                style={{
-                  position: "absolute",
-                  top: -6,
-                  right: -6,
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.5)",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  padding: 0,
-                }}
-              >
-                ×
-              </button>
-            </div>
-          )}
-        </div>
-
-        {submitError && (
-          <div style={{ marginTop: 8, color: "#e05a5a", fontWeight: 500, fontSize: 13 }}>
-            {submitError}
-          </div>
-        )}
-
-        <div style={{ marginTop: 12 }}>
-          <Button
-            type="primary"
-            size="small"
-            onClick={handleSubmitComment}
-            loading={submitting}
-            disabled={commentImage?.uploading}
-          >
-            发送
-          </Button>
-        </div>
-      </Card>
 
       <Modal
         open={!!deleteTarget}

@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.comment import CommentOut, LikeAuthorOut
+
 
 class PostCreateIn(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
@@ -42,6 +44,8 @@ class PostOut(BaseModel):
     is_owner: bool
     created_at: datetime
     updated_at: datetime
+    preview_comments: list[CommentOut] = Field(default_factory=list)
+    like_authors: list[LikeAuthorOut] = Field(default_factory=list)
 
 
 class PostDetailOut(PostOut):

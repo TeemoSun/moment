@@ -1,4 +1,12 @@
 import { getJson, postJson, deleteJson } from "./client";
+import type { CommentOut } from "./comments";
+
+export interface LikeAuthorOut {
+  id: number;
+  nickname: string;
+  avatar_url: string;
+  is_deactivated: boolean;
+}
 
 export interface AuthorOut {
   id: number;
@@ -28,6 +36,8 @@ export interface PostOut {
   is_owner: boolean;
   created_at: string;
   updated_at: string;
+  preview_comments: CommentOut[];
+  like_authors: LikeAuthorOut[];
 }
 
 export interface FeedOut {

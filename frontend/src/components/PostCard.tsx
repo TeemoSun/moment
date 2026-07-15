@@ -130,7 +130,9 @@ export default function PostCard({
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
             marginBottom: post.media.length > 0 ? 12 : 0,
+            cursor: "pointer",
           }}
+          onClick={() => navigate(`/posts/${post.id}`)}
         >
           {post.content}
         </div>
@@ -247,6 +249,119 @@ export default function PostCard({
           </Button>
         )}
       </div>
+
+      {likeCount > 0 && post.like_authors.length > 0 && (
+        <div
+          style={{
+            marginTop: 8,
+            color: "#9f927d",
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+          onClick={() => navigate(`/posts/${post.id}`)}
+        >
+          {post.like_authors.length <= 3
+            ? `${post.like_authors.map((a) => a.nickname).join("、")} 赞过`
+            : `${post.like_authors
+                .slice(0, 2)
+                .map((a) => a.nickname)
+                .join("、")} 等${likeCount}人赞过`}
+        </div>
+      )}
+
+      {post.preview_comments.length > 0 && (
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: "1.5px solid #e8dcc8",
+          }}
+        >
+          {post.preview_comments.map((comment) => (
+            <div
+              key={comment.id}
+              style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-start" }}
+            >
+              <Link
+                to={`/users/${comment.author.id}`}
+                style={{ textDecoration: "none", flexShrink: 0 }}
+              >
+                <img
+                  src={comment.author.avatar_url}
+                  alt={comment.author.nickname}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border: "1.5px solid #c4b89e",
+                  }}
+                />
+              </Link>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                  <Link
+                    to={`/users/${comment.author.id}`}
+                    style={{
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      color: "#794f27",
+                      fontSize: 13,
+                    }}
+                  >
+                    {comment.author.nickname}
+                  </Link>
+                  {comment.reply_to && (
+                    <span style={{ color: "#9f927d", fontSize: 12 }}>
+                      回复 @{comment.reply_to.nickname}
+                    </span>
+                  )}
+                </div>
+                {comment.content && (
+                  <div
+                    style={{
+                      color: "#725d42",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      marginTop: 2,
+                    }}
+                  >
+                    {comment.content}
+                  </div>
+                )}
+                {comment.image_thumb_url && (
+                  <div style={{ marginTop: 4 }}>
+                    <img
+                      src={comment.image_thumb_url}
+                      alt=""
+                      style={{ maxWidth: 120, maxHeight: 120, borderRadius: 8, objectFit: "cover" }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {post.comment_count > 3 && (
+            <div
+              style={{
+                marginTop: 4,
+                color: "#9f927d",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+              onClick={() => navigate(`/posts/${post.id}`)}
+            >
+              查看全部 {post.comment_count} 条评论
+            </div>
+          )}
+        </div>
+      )}
 
       <Modal
         open={showDeleteModal}
