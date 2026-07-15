@@ -14,6 +14,10 @@ from app.schemas.admin import (
     AdminUserListOut,
     AdminUserOut,
     AdminUserUpdateIn,
+    LLMConfigOut,
+    LLMConfigTestIn,
+    LLMConfigUpdateIn,
+    LLMTestOut,
     StatsOut,
 )
 from app.schemas.invite import InviteActionOut
@@ -114,3 +118,31 @@ def revoke_invite(
     admin=Depends(require_admin),
 ) -> dict:
     return admin_service.revoke_invite(db, invite_id)
+
+
+@router.get("/llm-config", response_model=LLMConfigOut)
+def get_llm_config(
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin),
+) -> dict:
+    return admin_service.get_llm_config(db)
+
+
+@router.put("/llm-config", response_model=LLMConfigOut)
+def update_llm_config(
+    data: LLMConfigUpdateIn,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    admin=Depends(require_admin),
+) -> dict:
+    return admin_service.update_llm_config(db, data)
+
+
+@router.post("/llm-config/test", response_model=LLMTestOut)
+async def test_llm_config(
+    data: LLMConfigTestIn,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+    admin=Depends(require_admin),
+) -> dict:
+    return await admin_service.test_llm_config(db, data.model_dump(exclude_unset=True))

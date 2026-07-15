@@ -101,6 +101,16 @@ export async function patchJson<T>(url: string, body?: unknown): Promise<T> {
   return handleResponse<T>(res);
 }
 
+export async function putJson<T>(url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "PUT",
+    credentials: "include",
+    headers: buildHeadersWithCsrf({ "Content-Type": "application/json" }),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(res);
+}
+
 export async function deleteJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     method: "DELETE",

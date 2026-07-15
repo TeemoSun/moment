@@ -140,6 +140,9 @@ async def run_bot(bot_user_id: int) -> None:
 
 
 async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
+    from app.services.llm_service import _load_llm_config
+
+    llm_cfg = _load_llm_config()
     friend_ids = _get_friend_ids(db, user.id)
     if not friend_ids:
         return
@@ -174,6 +177,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
             author_name=author.nickname,
             images_b64=images_b64 or None,
             model=bot.llm_model,
+            cfg=llm_cfg,
         )
         if not content:
             continue
@@ -240,6 +244,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
                 reply_to_name=tc_author.nickname,
                 reply_to_content=tc.content or "",
                 model=bot.llm_model,
+                cfg=llm_cfg,
             )
             if not reply_content:
                 continue

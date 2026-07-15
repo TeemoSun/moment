@@ -1,4 +1,4 @@
-import { getJson, patchJson, deleteJson, postJson } from "./client";
+import { getJson, patchJson, deleteJson, postJson, putJson } from "./client";
 
 export interface StatsOut {
   user_count: number;
@@ -155,4 +155,45 @@ export function listInvites(page = 1, pageSize = 20): Promise<AdminInviteListOut
 
 export function revokeInvite(inviteId: number): Promise<{ message: string }> {
   return postJson<{ message: string }>(`/api/v1/admin/invites/${inviteId}/revoke`);
+}
+
+export interface LLMConfigOut {
+  base_url: string;
+  model: string;
+  timeout: number;
+  max_tokens: number;
+  has_api_key: boolean;
+}
+
+export interface LLMConfigUpdateIn {
+  base_url?: string;
+  api_key?: string;
+  model?: string;
+  timeout?: number;
+  max_tokens?: number;
+}
+
+export interface LLMConfigTestIn {
+  base_url?: string;
+  api_key?: string;
+  model?: string;
+  timeout?: number;
+  max_tokens?: number;
+}
+
+export interface LLMTestOut {
+  success: boolean;
+  message: string;
+}
+
+export function getLLMConfig(): Promise<LLMConfigOut> {
+  return getJson<LLMConfigOut>("/api/v1/admin/llm-config");
+}
+
+export function updateLLMConfig(data: LLMConfigUpdateIn): Promise<LLMConfigOut> {
+  return putJson<LLMConfigOut>("/api/v1/admin/llm-config", data);
+}
+
+export function testLLMConfig(data: LLMConfigTestIn): Promise<LLMTestOut> {
+  return postJson<LLMTestOut>("/api/v1/admin/llm-config/test", data);
 }

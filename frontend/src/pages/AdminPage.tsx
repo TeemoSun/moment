@@ -12,6 +12,9 @@ import {
   deleteComment,
   listInvites,
   revokeInvite,
+  getLLMConfig,
+  updateLLMConfig,
+  testLLMConfig,
 } from "@/api/admin";
 import type {
   StatsOut,
@@ -19,6 +22,9 @@ import type {
   AdminPostOut,
   AdminCommentOut,
   AdminInviteOut,
+  LLMConfigOut,
+  LLMConfigUpdateIn,
+  LLMConfigTestIn,
 } from "@/api/admin";
 import {
   listBotsAdmin,
@@ -160,6 +166,17 @@ export default function AdminPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [llmConfig, setLlmConfig] = useState<LLMConfigOut | null>(null);
+  const [llmLoaded, setLlmLoaded] = useState(false);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState("");
+  const [llmForm, setLlmForm] = useState<LLMConfigUpdateIn>({});
+  const [llmApiKeyInput, setLlmApiKeyInput] = useState("");
+  const [llmApiKeyTouched, setLlmApiKeyTouched] = useState(false);
+  const [llmSaving, setLlmSaving] = useState(false);
+  const [llmTesting, setLlmTesting] = useState(false);
+  const [llmTestResult, setLlmTestResult] = useState<string>("");
+
   const [activeKey, setActiveKey] = useState("stats");
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [postsLoaded, setPostsLoaded] = useState(false);
@@ -278,6 +295,71 @@ export default function AdminPage() {
       setBotsError(err instanceof ApiError ? err.message : "加载机器人列表失败");
     } finally {
       setBotsLoading(false);
+    }
+  };
+
+  const loadLLMConfig = async () => {
+    setLlmLoading(true);
+    setLlmError("");
+    try {
+      const data = await getLLMConfig();
+      setLlmConfig(data);
+      setLlmForm({
+        base_url: data.base_url,
+        model: data.model,
+        timeout: data.timeout,
+        max_tokens: data.max_tokens,
+      });
+      setLlmApiKeyInput("");
+      setLlmApiKeyTouched(false);
+    } catch (err) {
+      setLlmError(err instanceof ApiError ? err.message : "加载大模型配置失败");
+    } finally {
+      setLlmLoading(false);
+    }
+  };
+
+  const handleSaveLLMConfig = async () => {
+    setLlmSaving(true);
+    setLlmError("");
+    try {
+      const data: LLMConfigUpdateIn = {};
+      if (llmForm.base_url !== undefined) data.base_url = llmForm.base_url.trim();
+      if (llmForm.model !== undefined) data.model = llmForm.model.trim();
+      if (llmForm.timeout !== undefined) data.timeout = llmForm.timeout;
+      if (llmForm.max_tokens !== undefined) data.max_tokens = llmForm.max_tokens;
+      if (llmApiKeyTouched) data.api_key = llmApiKeyInput;
+      const result = await updateLLMConfig(data);
+      setLlmConfig(result);
+      setLlmApiKeyInput("");
+      setLlmApiKeyTouched(false);
+      notify.success("大模型配置已保存");
+    } catch (err) {
+      setLlmError(err instanceof ApiError ? err.message : "保存失败");
+    } finally {
+      setLlmSaving(false);
+    }
+  };
+
+  const handleTestLLMConfig = async () => {
+    setLlmTesting(true);
+    setLlmTestResult("");
+    try {
+      const data: LLMConfigTestIn = {};
+      if (llmForm.base_url) data.base_url = llmForm.base_url.trim();
+      if (llmForm.model) data.model = llmForm.model.trim();
+      if (llmForm.timeout) data.timeout = llmForm.timeout;
+      if (llmForm.max_tokens) data.max_tokens = llmForm.max_tokens;
+      if (llmApiKeyTouched) data.api_key = llmApiKeyInput;
+      const result = await testLLMConfig(data);
+      setLlmTestResult(result.message);
+      if (result.success) notify.success("测试成功");
+      else notify.error("测试失败");
+    } catch (err) {
+      setLlmTestResult(err instanceof ApiError ? err.message : "测试失败");
+      notify.error("测试失败");
+    } finally {
+      setLlmTesting(false);
     }
   };
 
@@ -1464,6 +1546,132 @@ export default function AdminPage() {
     </div>
   );
 
+  const llmConfigTab = (
+    <div>
+      {llmError && (
+        <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12, fontSize: 14 }}>
+          {llmError}
+        </div>
+      )}
+
+      {!llmLoaded || llmLoading ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: 40,
+            color: "#9f927d",
+            fontWeight: 500,
+            fontSize: 15,
+          }}
+        >
+          加载中...
+        </div>
+      ) : llmConfig ? (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+                API Base URL
+              </div>
+              <Input
+                value={llmForm.base_url || ""}
+                onChange={(e) => setLlmForm({ ...llmForm, base_url: e.target.value })}
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+                API Key{" "}
+                {!llmApiKeyTouched && llmConfig.has_api_key ? (
+                  <span style={{ color: "#9f927d", fontSize: 12, fontWeight: 500 }}>
+                    （已配置，输入新值可替换）
+                  </span>
+                ) : null}
+              </div>
+              <Input
+                value={llmApiKeyInput}
+                onChange={(e) => {
+                  setLlmApiKeyInput(e.target.value);
+                  setLlmApiKeyTouched(true);
+                }}
+                placeholder={llmConfig.has_api_key ? "••••••（留空则不变）" : "请输入 API Key"}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "#794f27", marginBottom: 4 }}>
+                默认模型
+              </div>
+              <Input
+                value={llmForm.model || ""}
+                onChange={(e) => setLlmForm({ ...llmForm, model: e.target.value })}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>超时(秒)</div>
+                <Input
+                  type="number"
+                  value={llmForm.timeout}
+                  onChange={(e) =>
+                    setLlmForm({
+                      ...llmForm,
+                      timeout: parseInt(e.target.value, 10) || 30,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, color: "#9f927d", marginBottom: 4 }}>最大 Tokens</div>
+                <Input
+                  type="number"
+                  value={llmForm.max_tokens}
+                  onChange={(e) =>
+                    setLlmForm({
+                      ...llmForm,
+                      max_tokens: parseInt(e.target.value, 10) || 300,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button type="primary" size="small" loading={llmSaving} onClick={handleSaveLLMConfig}>
+                保存配置
+              </Button>
+              <Button
+                type="default"
+                size="small"
+                loading={llmTesting}
+                onClick={handleTestLLMConfig}
+              >
+                测试连通性
+              </Button>
+            </div>
+            {llmTestResult && (
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgb(247, 243, 223)",
+                  color: llmTestResult.startsWith("测试成功") ? "#5a9e1e" : "#e05a5a",
+                  wordBreak: "break-word",
+                }}
+              >
+                {llmTestResult}
+              </div>
+            )}
+            <div style={{ color: "#9f927d", fontSize: 12, marginTop: 4 }}>
+              说明：此配置全局生效，所有机器人在未单独指定模型时使用上述默认模型。
+            </div>
+          </div>
+        </Card>
+      ) : null}
+    </div>
+  );
+
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-teal">管理后台</Title>
@@ -1487,6 +1695,9 @@ export default function AdminPage() {
             } else if (key === "bots" && !botsLoaded) {
               setBotsLoaded(true);
               loadBots();
+            } else if (key === "llm-config" && !llmLoaded) {
+              setLlmLoaded(true);
+              loadLLMConfig();
             }
           }}
           items={[
@@ -1515,6 +1726,11 @@ export default function AdminPage() {
               key: "bots",
               label: "机器人管理",
               children: botsTab,
+            },
+            {
+              key: "llm-config",
+              label: "大模型配置",
+              children: llmConfigTab,
             },
           ]}
         />

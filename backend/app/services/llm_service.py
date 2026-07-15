@@ -1,12 +1,55 @@
-"""LLM 客户端：调用 OpenAI 兼容接口生成评论。"""
+"""LLM 客户端：调用 OpenAI 兼容接口生成评论。
+
+大模型配置（base_url / api_key / model / timeout / max_tokens）存储在
+``system_status`` 表，由管理员后台管理；不再从环境变量读取。
+"""
 
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 
 import httpx
 
-from app.config import settings
+
+@dataclass(frozen=True)
+class LLMConfig:
+    base_url: str
+    api_key: str
+    model: str
+    timeout: int
+    max_tokens: int
+
+
+def _load_llm_config() -> LLMConfig:
+    """从数据库读取全局 LLM 配置（system_status 单行表，id=1）。"""
+    from app.database import SessionLocal
+    from app.models.system_status import SystemStatus
+
+    db = SessionLocal()
+    try:
+        row = db.query(SystemStatus).filter(SystemStatus.id == 1).first()
+        if row is None:
+            return LLMConfig(
+                base_url="https://api.openai.com/v1",
+                api_key="",
+                model="gpt-4o-mini",
+                timeout=30,
+                max_tokens=300,
+            )
+        return LLMConfig(
+            base_url=row.llm_base_url,
+            api_key=row.llm_api_key,
+            model=row.llm_model,
+            timeout=row.llm_timeout,
+            max_tokens=row.llm_max_tokens,
+        )
+    finally:
+        db.close()
+
+
+def _mock_response() -> str | None:
+    return os.environ.get("LLM_MOCK_RESPONSE")
 
 
 async def generate_comment(
@@ -15,12 +58,16 @@ async def generate_comment(
     author_name: str,
     images_b64: list[str] | None = None,
     model: str | None = None,
+    cfg: LLMConfig | None = None,
 ) -> str:
-    if os.environ.get("LLM_MOCK_RESPONSE"):
-        return os.environ["LLM_MOCK_RESPONSE"]
-    if not settings.LLM_API_KEY:
-        raise RuntimeError("LLM_API_KEY 未配置")
-    use_model = model or settings.LLM_MODEL
+    mock = _mock_response()
+    if mock is not None:
+        return mock
+    if cfg is None:
+        cfg = _load_llm_config()
+    if not cfg.api_key:
+        raise RuntimeError("LLM API Key 未配置")
+    use_model = model or cfg.model
     system_msg = (
         f"你是以下人设的角色，用第一人称简短自然地回复朋友圈动态。人设：{persona}\n"
         f"要求：中文，不超过100字，像真人评论，不要markdown不要链接。"
@@ -34,15 +81,15 @@ async def generate_comment(
             )
     payload = {
         "model": use_model,
-        "max_tokens": settings.LLM_MAX_TOKENS,
+        "max_tokens": cfg.max_tokens,
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": content},
         ],
     }
-    headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
-    url = f"{settings.LLM_BASE_URL.rstrip('/')}/chat/completions"
-    async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
+    headers = {"Authorization": f"Bearer {cfg.api_key}"}
+    url = f"{cfg.base_url.rstrip('/')}/chat/completions"
+    async with httpx.AsyncClient(timeout=cfg.timeout) as client:
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         data = resp.json()
@@ -56,12 +103,16 @@ async def generate_reply(
     reply_to_name: str,
     reply_to_content: str,
     model: str | None = None,
+    cfg: LLMConfig | None = None,
 ) -> str:
-    if os.environ.get("LLM_MOCK_RESPONSE"):
-        return os.environ["LLM_MOCK_RESPONSE"]
-    if not settings.LLM_API_KEY:
-        raise RuntimeError("LLM_API_KEY 未配置")
-    use_model = model or settings.LLM_MODEL
+    mock = _mock_response()
+    if mock is not None:
+        return mock
+    if cfg is None:
+        cfg = _load_llm_config()
+    if not cfg.api_key:
+        raise RuntimeError("LLM API Key 未配置")
+    use_model = model or cfg.model
     system_msg = (
         f"你是以下人设的角色，用第一人称简短自然地回复别人对你评论的回复。人设：{persona}\n"
         f"要求：中文，不超过80字，像真人对话，不要markdown。"
@@ -72,15 +123,39 @@ async def generate_reply(
     )
     payload = {
         "model": use_model,
-        "max_tokens": settings.LLM_MAX_TOKENS,
+        "max_tokens": cfg.max_tokens,
         "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_text},
         ],
     }
-    headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
-    url = f"{settings.LLM_BASE_URL.rstrip('/')}/chat/completions"
-    async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
+    headers = {"Authorization": f"Bearer {cfg.api_key}"}
+    url = f"{cfg.base_url.rstrip('/')}/chat/completions"
+    async with httpx.AsyncClient(timeout=cfg.timeout) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+    return data["choices"][0]["message"]["content"].strip()
+
+
+async def test_llm(cfg: LLMConfig) -> str:
+    """用给定配置发送一个最小请求，验证连通性。返回模型回复内容。
+
+    用于后台"测试"按钮。失败时抛出异常（由调用方捕获并转 HTTP 错误）。
+    """
+    if not cfg.api_key:
+        raise RuntimeError("LLM API Key 未配置")
+    payload = {
+        "model": cfg.model,
+        "max_tokens": 16,
+        "messages": [
+            {"role": "system", "content": "你是测试助手。"},
+            {"role": "user", "content": '请回复"OK"。'},
+        ],
+    }
+    headers = {"Authorization": f"Bearer {cfg.api_key}"}
+    url = f"{cfg.base_url.rstrip('/')}/chat/completions"
+    async with httpx.AsyncClient(timeout=cfg.timeout) as client:
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         data = resp.json()

@@ -9,6 +9,7 @@ from app.models.comments import Comment
 from app.models.invite_codes import InviteCode
 from app.models.likes import Like
 from app.models.posts import Post
+from app.models.system_status import SystemStatus
 from app.models.users import User
 from app.schemas.admin import (
     AdminAuthorOut,
@@ -21,6 +22,8 @@ from app.schemas.admin import (
     AdminUserListOut,
     AdminUserOut,
     AdminUserUpdateIn,
+    LLMConfigOut,
+    LLMConfigUpdateIn,
     StatsOut,
 )
 from app.schemas.common import AppError, ErrorCode
@@ -341,3 +344,62 @@ def revoke_invite(db: Session, invite_id: int) -> dict:
     invite.status = "revoked"
     db.commit()
     return {"message": "邀请码已失效"}
+
+
+def _get_system_status(db: Session) -> SystemStatus:
+    row = db.query(SystemStatus).filter(SystemStatus.id == 1).first()
+    if row is None:
+        raise AppError(ErrorCode.NOT_FOUND, "系统状态未初始化", 500)
+    return row
+
+
+def get_llm_config(db: Session) -> dict:
+    row = _get_system_status(db)
+    return LLMConfigOut(
+        base_url=row.llm_base_url,
+        model=row.llm_model,
+        timeout=row.llm_timeout,
+        max_tokens=row.llm_max_tokens,
+        has_api_key=bool(row.llm_api_key),
+    ).model_dump(mode="json")
+
+
+def update_llm_config(db: Session, data: LLMConfigUpdateIn) -> dict:
+    row = _get_system_status(db)
+    if data.base_url is not None:
+        row.llm_base_url = data.base_url
+    if data.api_key is not None:
+        row.llm_api_key = data.api_key
+    if data.model is not None:
+        row.llm_model = data.model
+    if data.timeout is not None:
+        row.llm_timeout = data.timeout
+    if data.max_tokens is not None:
+        row.llm_max_tokens = data.max_tokens
+    db.commit()
+    db.refresh(row)
+    return get_llm_config(db)
+
+
+async def test_llm_config(db: Session, data: dict) -> dict:
+    """用给定（或已保存的）配置测试 LLM 连通性。"""
+    from app.services.llm_service import LLMConfig, test_llm
+
+    row = _get_system_status(db)
+    base_url = data.get("base_url") or row.llm_base_url
+    api_key = data.get("api_key") or row.llm_api_key
+    model = data.get("model") or row.llm_model
+    timeout = data.get("timeout") or row.llm_timeout
+    max_tokens = data.get("max_tokens") or row.llm_max_tokens
+    cfg = LLMConfig(
+        base_url=base_url,
+        api_key=api_key,
+        model=model,
+        timeout=timeout,
+        max_tokens=max_tokens,
+    )
+    try:
+        content = await test_llm(cfg)
+        return {"success": True, "message": f"测试成功，模型回复：{content}"}
+    except Exception as exc:
+        return {"success": False, "message": f"测试失败：{exc}"}

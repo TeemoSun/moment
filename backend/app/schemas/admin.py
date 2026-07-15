@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StatsOut(BaseModel):
@@ -107,3 +107,32 @@ class AdminInviteListOut(BaseModel):
     page: int
     page_size: int
     has_more: bool
+
+
+class LLMConfigOut(BaseModel):
+    base_url: str
+    model: str
+    timeout: int
+    max_tokens: int
+    has_api_key: bool
+
+
+class LLMConfigUpdateIn(BaseModel):
+    base_url: str | None = Field(default=None, max_length=500)
+    api_key: str | None = Field(default=None, max_length=500)
+    model: str | None = Field(default=None, max_length=100)
+    timeout: int | None = Field(default=None, ge=1, le=600)
+    max_tokens: int | None = Field(default=None, ge=1, le=8192)
+
+
+class LLMConfigTestIn(BaseModel):
+    base_url: str | None = Field(default=None, max_length=500)
+    api_key: str | None = Field(default=None, max_length=500)
+    model: str | None = Field(default=None, max_length=100)
+    timeout: int | None = Field(default=None, ge=1, le=600)
+    max_tokens: int | None = Field(default=None, ge=1, le=8192)
+
+
+class LLMTestOut(BaseModel):
+    success: bool
+    message: str
