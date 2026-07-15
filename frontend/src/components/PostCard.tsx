@@ -82,8 +82,21 @@ export default function PostCard({
 
   return (
     <Card style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-        <Link to={`/users/${post.author.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 12,
+          cursor: "pointer",
+        }}
+        onClick={() => navigate(`/posts/${post.id}`)}
+      >
+        <Link
+          to={`/users/${post.author.id}`}
+          style={{ textDecoration: "none", flexShrink: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <img
             src={post.author.avatar_url}
             alt={post.author.nickname}
@@ -106,6 +119,7 @@ export default function PostCard({
                 color: "#794f27",
                 fontSize: 15,
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               {post.author.nickname}
             </Link>
