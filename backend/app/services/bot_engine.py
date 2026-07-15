@@ -171,6 +171,16 @@ def _get_post_images_b64(db: Session, post_id: int) -> list[str]:
     return result
 
 
+def _get_comment_image_b64(db: Session, comment: Comment) -> list[str]:
+    """读取评论附带图片（large 版）的 base64，无图返回空列表。"""
+    if not comment.image_large_path:
+        return []
+    p = (get_storage_root() / comment.image_large_path).resolve()
+    if not p.is_file():
+        return []
+    return [base64.b64encode(p.read_bytes()).decode()]
+
+
 async def run_bot(bot_user_id: int) -> None:
     db = _get_session()
     try:
@@ -314,6 +324,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
                 model=bot.llm_model,
                 cfg=llm_cfg,
                 author_context=author_context,
+                images_b64=_get_comment_image_b64(db, tc) or None,
             )
             if not reply_content:
                 continue

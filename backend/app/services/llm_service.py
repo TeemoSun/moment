@@ -105,6 +105,7 @@ async def generate_reply(
     model: str | None = None,
     cfg: LLMConfig | None = None,
     author_context: str | None = None,
+    images_b64: list[str] | None = None,
 ) -> str:
     mock = _mock_response()
     if mock is not None:
@@ -124,10 +125,16 @@ async def generate_reply(
         f"\n\n朋友圈原动态({author_name}发)：{post_content}\n\n"
         f"{reply_to_name} 回复了你：{reply_to_content}"
     )
+    content: list[dict] = [{"type": "text", "text": user_text}]
+    if images_b64:
+        for b64 in images_b64:
+            content.append(
+                {"type": "image_url", "image_url": {"url": f"data:image/webp;base64,{b64}"}}
+            )
     payload = {
         "model": use_model,
         "max_tokens": cfg.max_tokens,
-        "messages": [{"role": "user", "content": user_text}],
+        "messages": [{"role": "user", "content": content}],
     }
     headers = {"Authorization": f"Bearer {cfg.api_key}"}
     url = f"{cfg.base_url.rstrip('/')}/chat/completions"
