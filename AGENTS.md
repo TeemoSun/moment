@@ -5,18 +5,18 @@ Moments: a朋友圈-style social app. Two packages in one repo (not a monorepo w
 - `backend/` — Python 3.12 + FastAPI + SQLAlchemy 2.x, managed with **uv** (not pip). `backend/app/` is the app; `backend/alembic/` migrations; `backend/tests/` pytest suite. Run backend commands with `cd backend && uv run ...`.
 - `frontend/` — React 18 + TS + Vite. `@/*` path alias → `frontend/src`. State via Zustand stores in `frontend/src/stores/`. Build = `tsc -b && vite build`.
 
-Backend serves the built frontend (`frontend/dist`) in production; dev runs them separately.
+Backend serves the built frontend (`frontend/dist`) in production; dev runs them separately. `docker compose up -d` runs the full stack (postgres:16 `db` service + backend `moments` service); backend auto-runs migrations on startup.
 
 ### Commands
 
-Dev (both servers, Ctrl+C exits both): `bash scripts/dev.sh` — backend http://localhost:8000, frontend http://localhost:5173 (Vite proxies `/api` → backend; port via `VITE_BACKEND_PORT`).
+Dev (both servers, Ctrl+C exits both): `bash scripts/dev.sh` — backend http://localhost:8000, frontend http://localhost:5173 (Vite proxies `/api` → backend; port via `VITE_BACKEND_PORT`). Backend connects to PostgreSQL via `DB_URL` (default `localhost:5432`); start PG first with `docker compose up -d db` or a local instance.
 
 Build frontend: `bash scripts/build.sh`.
 
 Backend lint/format/typecheck/test (run in `backend/`):
 - `uv run ruff check app && uv run ruff format --check app && uv run ruff format --check alembic`
 - `uv run mypy app`
-- `uv run pytest` (tests set `SKIP_ALEMBIC=1` and use a tmp SQLite DB; no external services needed)
+- `uv run pytest` (tests need a **running PostgreSQL**; they use a shared `moments_test` DB reset via TRUNCATE between tests. Ensure PG is up — e.g. `docker compose up -d db` from repo root, or run a local PG on `localhost:5432` with the `POSTGRES_*` creds from `.env`)
 - single test: `uv run pytest tests/test_auth.py::TestClass::test_name -q`
 
 Frontend lint/format (run in `frontend/`):
@@ -32,8 +32,9 @@ Pre-commit hook (.githooks/pre-commit) runs the backend ruff/mypy + frontend esl
 - **`.env` is mutated at runtime.** `app.config.ensure_runtime_env()` (called in lifespan and `alembic/env.py`) creates `.env` from `.env.example` if missing and auto-generates + writes `JWT_SECRET` (chmod 0600) when empty. Don't assume `.env` is read-only.
 - **All ORM models must be imported** in `app/models/__init__.py` so Alembic's `Base.metadata` sees them. `alembic/env.py` does `import app.models`; the test conftest does the same before `Base.metadata.create_all`.
 - **`bcrypt<4` is pinned** (passlib compatibility) — don't upgrade blindly.
+- **Database is PostgreSQL** (psycopg 3 driver, `postgresql+psycopg://` URLs). `app/database.py` uses a connection pool (`pool_pre_ping`, `pool_size=5`, `max_overflow=10`); do not re-add SQLite-specific `PRAGMA`/`check_same_thread` code. Driver is `psycopg[binary]` (bundled libpq, no system libpq needed).
 - **Video handling needs ffmpeg/ffprobe** on PATH (`app/storage/filekit.py` validates videos with `ffprobe`). The Docker image installs `ffmpeg`; local dev must have it too.
-- Migrations use `render_as_batch=True` (SQLite-friendly). SQLite enforces `PRAGMA foreign_keys=ON` in `app/database.py` and test conftest.
+- Migrations target PostgreSQL (`alembic/env.py` no longer uses `render_as_batch=True`; that was SQLite-only). `server_default` uses `func.now()`, not `text("CURRENT_TIMESTAMP")`.
 - Config is `pydantic-settings` (`app.config.Settings`); `settings` is a module-level singleton but tests/`lifespan` reassign it via `cfg.settings = cfg._create_settings()` after env changes — mutate env then re-create settings rather than editing the singleton.
 
 ### Frontend gotchas
@@ -45,11 +46,11 @@ Pre-commit hook (.githooks/pre-commit) runs the backend ruff/mypy + frontend esl
 
 ### Env
 
-`.env` is gitignored and mostly self-bootstrapping; see `.env.example` for the full list. Notable: `DEBUG`, `SECURE_COOKIES`, `DB_URL` (default `sqlite:///data/app.db`), `JWT_SECRET` (auto-generated if empty), `CORS_ORIGINS` (comma-separated, empty = no CORS), `STORAGE_ROOT`, media size limits, `PUBLIC_BASE_URL` (used for invite links).
+`.env` is gitignored and mostly self-bootstrapping; see `.env.example` for the full list. Notable: `DEBUG`, `SECURE_COOKIES`, `DB_URL` (default `postgresql+psycopg://moments:moments@localhost:5432/moments`), `POSTGRES_*` (user/password/db/host/port — used by docker-compose to start the `postgres:16` service and by tests to locate the DB), `JWT_SECRET` (auto-generated if empty), `CORS_ORIGINS` (comma-separated, empty = no CORS), `STORAGE_ROOT`, media size limits, `PUBLIC_BASE_URL` (used for invite links).
 
 ### Layout notes
 
-- `storage/` — runtime media files (gitignored). `data/` — SQLite DB (gitignored). `logs/` — runtime logs (gitignored). `docs/` — design docs (Chinese): `项目实现方案.md` is the detailed spec.
+- `storage/` — runtime media files (gitignored). `data/` — PostgreSQL data (`data/pg`, gitignored). `logs/` — runtime logs (gitignored). `docs/` — design docs (Chinese): `项目实现方案.md` is the detailed spec.
 - API routes mounted under `/api`; docs at `/api/docs`, OpenAPI at `/api/openapi.json`.
 - App layers: `app/api/` (routers), `app/services/` (business logic), `app/models/` (ORM), `app/schemas/` (Pydantic), `app/storage/` (media/ffprobe/filekit), `app/tasks/`, `app/core/`, `app/utils/`.
 - `system_status` table holds the single init/admin row; `_ensure_system_status()` in `main.py` inserts the seed row idempotently at startup.
