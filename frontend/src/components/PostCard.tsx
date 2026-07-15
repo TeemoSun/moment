@@ -28,8 +28,8 @@ export default function PostCard({
   const [lightbox, setLightbox] = useState<{ images: LightboxImage[]; index: number } | null>(null);
 
   const getGridColumns = (count: number): string => {
-    if (count === 1) return isMobile ? "minmax(0, 100%)" : "minmax(0, 300px)";
-    return isMobile ? "repeat(auto-fill, minmax(0, 120px))" : "repeat(auto-fill, minmax(0, 300px))";
+    if (count === 1) return "minmax(0, 300px)";
+    return `repeat(${Math.min(count, 3)}, minmax(0, 300px))`;
   };
 
   const handleLike = async () => {

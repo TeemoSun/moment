@@ -285,7 +285,7 @@ export default function PostDetailPage() {
               gridTemplateColumns:
                 post.media.length === 1
                   ? "minmax(0, 300px)"
-                  : "repeat(auto-fill, minmax(0, 300px))",
+                  : `repeat(${Math.min(post.media.length, 3)}, minmax(0, 300px))`,
               gap: 4,
               marginTop: 12,
             }}
