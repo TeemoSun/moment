@@ -59,6 +59,7 @@ async def generate_comment(
     images_b64: list[str] | None = None,
     model: str | None = None,
     cfg: LLMConfig | None = None,
+    author_context: str | None = None,
 ) -> str:
     mock = _mock_response()
     if mock is not None:
@@ -68,11 +69,13 @@ async def generate_comment(
     if not cfg.api_key:
         raise RuntimeError("LLM API Key 未配置")
     use_model = model or cfg.model
-    system_msg = (
+    user_text = (
         f"你是以下人设的角色，用第一人称简短自然地回复朋友圈动态。人设：{persona}\n"
         f"要求：中文，不超过100字，像真人评论，不要markdown不要链接。"
     )
-    user_text = f"{author_name} 发了一条朋友圈：\n{post_content}"
+    if author_context:
+        user_text += f"\n\n{author_context}"
+    user_text += f"\n\n{author_name} 发了一条朋友圈：\n{post_content}"
     content: list[dict] = [{"type": "text", "text": user_text}]
     if images_b64:
         for b64 in images_b64:
@@ -82,10 +85,7 @@ async def generate_comment(
     payload = {
         "model": use_model,
         "max_tokens": cfg.max_tokens,
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": content},
-        ],
+        "messages": [{"role": "user", "content": content}],
     }
     headers = {"Authorization": f"Bearer {cfg.api_key}"}
     url = f"{cfg.base_url.rstrip('/')}/chat/completions"
@@ -104,6 +104,7 @@ async def generate_reply(
     reply_to_content: str,
     model: str | None = None,
     cfg: LLMConfig | None = None,
+    author_context: str | None = None,
 ) -> str:
     mock = _mock_response()
     if mock is not None:
@@ -113,21 +114,20 @@ async def generate_reply(
     if not cfg.api_key:
         raise RuntimeError("LLM API Key 未配置")
     use_model = model or cfg.model
-    system_msg = (
+    user_text = (
         f"你是以下人设的角色，用第一人称简短自然地回复别人对你评论的回复。人设：{persona}\n"
         f"要求：中文，不超过80字，像真人对话，不要markdown。"
     )
-    user_text = (
-        f"朋友圈原动态({author_name}发)：{post_content}\n\n"
+    if author_context:
+        user_text += f"\n\n{author_context}"
+    user_text += (
+        f"\n\n朋友圈原动态({author_name}发)：{post_content}\n\n"
         f"{reply_to_name} 回复了你：{reply_to_content}"
     )
     payload = {
         "model": use_model,
         "max_tokens": cfg.max_tokens,
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": user_text},
-        ],
+        "messages": [{"role": "user", "content": user_text}],
     }
     headers = {"Authorization": f"Bearer {cfg.api_key}"}
     url = f"{cfg.base_url.rstrip('/')}/chat/completions"
@@ -148,10 +148,7 @@ async def test_llm(cfg: LLMConfig) -> str:
     payload = {
         "model": cfg.model,
         "max_tokens": 16,
-        "messages": [
-            {"role": "system", "content": "你是测试助手。"},
-            {"role": "user", "content": '请回复"OK"。'},
-        ],
+        "messages": [{"role": "user", "content": '你是测试助手。请回复"OK"。'}],
     }
     headers = {"Authorization": f"Bearer {cfg.api_key}"}
     url = f"{cfg.base_url.rstrip('/')}/chat/completions"

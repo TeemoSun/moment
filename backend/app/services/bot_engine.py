@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import logging
 import random
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -84,6 +84,69 @@ def _already_replied_comment(db: Session, bot_user_id: int, target_comment_id: i
         .first()
         is not None
     )
+
+
+def _media_placeholder_for_post(db: Session, post_id: int) -> str:
+    """返回该动态媒体占位文本，如「[图片][图片]」或「[视频]」；无媒体返回空串。"""
+    rows = (
+        db.query(PostMedia)
+        .filter(PostMedia.post_id == post_id)
+        .order_by(PostMedia.sort_order)
+        .all()
+    )
+    parts: list[str] = []
+    for m in rows:
+        if m.kind == "image":
+            parts.append("[图片]")
+        elif m.kind == "video":
+            parts.append("[视频]")
+    return "".join(parts)
+
+
+def _format_post_for_context(db: Session, post: Post, now: datetime) -> str:
+    """把一条动态及其评论格式化为上下文文本片段。"""
+    media_tag = _media_placeholder_for_post(db, post.id)
+    ts = post.created_at.strftime("%Y-%m-%d %H:%M")
+    body = post.content or ""
+    if media_tag:
+        body = f"{body} {media_tag}" if body else media_tag
+    lines = [f"[{ts}] {body}".rstrip()]
+    comments = (
+        db.query(Comment)
+        .filter(Comment.post_id == post.id, Comment.deleted_at.is_(None))
+        .order_by(Comment.created_at)
+        .all()
+    )
+    for c in comments:
+        c_author = db.query(User).filter(User.id == c.user_id).first()
+        c_name = c_author.nickname if c_author else "未知"
+        c_ts = c.created_at.strftime("%Y-%m-%d %H:%M")
+        c_body = c.content or ""
+        if c.image_thumb_path:
+            c_body = f"{c_body} [图片]".strip()
+        lines.append(f"  └ {c_name}({c_ts})：{c_body}")
+    return "\n".join(lines)
+
+
+def _build_author_context(
+    db: Session, author_id: int, exclude_post_id: int | None = None
+) -> str | None:
+    """构建作者最近 10 条朋友圈（含评论）的上下文文本。无则返回 None。"""
+    now = utcnow()
+    q = (
+        db.query(Post)
+        .filter(Post.user_id == author_id, Post.deleted_at.is_(None))
+        .order_by(Post.created_at.desc())
+    )
+    if exclude_post_id is not None:
+        q = q.filter(Post.id != exclude_post_id)
+    posts = q.limit(10).all()
+    if not posts:
+        return None
+    now_str = now.strftime("%Y-%m-%d %H:%M")
+    header = f"当前时间：{now_str}\n以下是作者最近的朋友圈动态："
+    body = "\n\n".join(_format_post_for_context(db, p, now) for p in posts)
+    return f"{header}\n\n{body}"
 
 
 def _get_post_images_b64(db: Session, post_id: int) -> list[str]:
@@ -171,6 +234,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
         if not author:
             continue
         images_b64 = _get_post_images_b64(db, post.id)
+        author_context = _build_author_context(db, author.id, exclude_post_id=post.id)
         content = await llm_service.generate_comment(
             persona=bot.persona,
             post_content=post.content,
@@ -178,6 +242,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
             images_b64=images_b64 or None,
             model=bot.llm_model,
             cfg=llm_cfg,
+            author_context=author_context,
         )
         if not content:
             continue
@@ -237,6 +302,9 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
                 continue
             post_author = db.query(User).filter(User.id == inner_post.user_id).first()
             author_name = post_author.nickname if post_author else "未知"
+            author_context = _build_author_context(
+                db, inner_post.user_id, exclude_post_id=inner_post.id
+            )
             reply_content = await llm_service.generate_reply(
                 persona=bot.persona,
                 post_content=inner_post.content,
@@ -245,6 +313,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
                 reply_to_content=tc.content or "",
                 model=bot.llm_model,
                 cfg=llm_cfg,
+                author_context=author_context,
             )
             if not reply_content:
                 continue
