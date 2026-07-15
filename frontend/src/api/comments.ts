@@ -19,6 +19,7 @@ export interface CommentOut {
   author: CommentAuthorOut;
   parent_comment_id: number | null;
   reply_to: ReplyToOut | null;
+  reply_content_preview: string | null;
   content: string | null;
   image_thumb_url: string | null;
   image_large_url: string | null;

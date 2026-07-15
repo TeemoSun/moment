@@ -397,6 +397,7 @@ export default function PostDetailPage() {
               {comment.reply_to && (
                 <div style={{ color: "#9f927d", fontSize: 13, marginTop: 2 }}>
                   回复 @{comment.reply_to.nickname}
+                  {comment.reply_content_preview ? ` ${comment.reply_content_preview}` : ""}
                 </div>
               )}
               {comment.content && (

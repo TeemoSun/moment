@@ -26,6 +26,7 @@ class CommentOut(BaseModel):
     author: CommentAuthorOut
     parent_comment_id: int | None
     reply_to: ReplyToOut | None
+    reply_content_preview: str | None
     content: str | None
     image_thumb_url: str | None
     image_large_url: str | None

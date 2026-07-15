@@ -108,6 +108,16 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
     all_user_ids = list(set(author_ids + reply_to_ids))
     users = {u.id: u for u in db.query(User).filter(User.id.in_(all_user_ids)).all()}
 
+    parent_ids = list({c.parent_comment_id for c in comments if c.parent_comment_id})
+    parent_comments: dict[int, Comment] = {}
+    if parent_ids:
+        parent_comments = {
+            pc.id: pc
+            for pc in db.query(Comment)
+            .filter(Comment.id.in_(parent_ids), Comment.deleted_at.is_(None))
+            .all()
+        }
+
     comment_ids = [c.id for c in comments]
     like_counts_rows = (
         db.query(Like.target_id, func.count(Like.id))
@@ -151,6 +161,17 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
 
         can_delete = c.user_id == viewer_id or post.user_id == viewer_id or is_admin
 
+        reply_content_preview = None
+        parent = parent_comments.get(c.parent_comment_id) if c.parent_comment_id else None
+        if parent and parent.content:
+            first_line = (
+                parent.content.splitlines()[0] if "\n" in parent.content else parent.content
+            )
+            if len(first_line) > 10:
+                reply_content_preview = first_line[:10] + "..."
+            else:
+                reply_content_preview = first_line
+
         items.append(
             CommentOut(
                 id=c.id,
@@ -158,6 +179,7 @@ def list_comments(db: Session, viewer_id: int, post_id: int, page: int, page_siz
                 author=_build_comment_author(author),
                 parent_comment_id=c.parent_comment_id,
                 reply_to=reply_to_out,
+                reply_content_preview=reply_content_preview,
                 content=c.content,
                 image_thumb_url=image_thumb_url,
                 image_large_url=image_large_url,
@@ -216,6 +238,7 @@ def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
         image_large_path = media.large_path
         db.delete(media)
 
+    parent: Comment | None = None
     if parent_comment_id:
         parent = (
             db.query(Comment)
@@ -270,12 +293,21 @@ def create_comment(db: Session, user: User, post_id: int, data: dict) -> dict:
 
     can_delete = comment.user_id == user.id or post.user_id == user.id or user.role == "admin"
 
+    reply_content_preview = None
+    if parent and parent.content:
+        first_line = parent.content.splitlines()[0] if "\n" in parent.content else parent.content
+        if len(first_line) > 10:
+            reply_content_preview = first_line[:10] + "..."
+        else:
+            reply_content_preview = first_line
+
     return CommentOut(
         id=comment.id,
         post_id=comment.post_id,
         author=_build_comment_author(author),
         parent_comment_id=comment.parent_comment_id,
         reply_to=reply_to_out,
+        reply_content_preview=reply_content_preview,
         content=comment.content,
         image_thumb_url=image_thumb_url,
         image_large_url=image_large_url,
