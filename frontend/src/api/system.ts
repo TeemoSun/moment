@@ -4,6 +4,7 @@ import type { MeOut } from "./me";
 export interface InitializedOut {
   initialized: boolean;
   allow_insecure_clipboard?: boolean;
+  app_name?: string;
 }
 
 export interface InitIn {

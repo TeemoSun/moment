@@ -22,6 +22,7 @@ def check_initialized(db: Session = Depends(get_db)) -> InitializedOut:
     return InitializedOut(
         initialized=system_service.is_initialized(db),
         allow_insecure_clipboard=settings.ALLOW_INSECURE_CLIPBOARD,
+        app_name=settings.APP_NAME,
     )
 
 

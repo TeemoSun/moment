@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 class InitializedOut(BaseModel):
     initialized: bool
     allow_insecure_clipboard: bool = False
+    app_name: str = "Moments"
 
 
 class InitIn(BaseModel):

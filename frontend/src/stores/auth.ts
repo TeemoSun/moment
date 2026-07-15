@@ -28,6 +28,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchInitialized: async () => {
     try {
       const res = await getInitialized();
+      if (res.app_name) {
+        document.title = res.app_name;
+      }
       set({
         initialized: res.initialized,
         allowInsecureClipboard: res.allow_insecure_clipboard ?? false,
