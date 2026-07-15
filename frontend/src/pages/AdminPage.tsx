@@ -1673,7 +1673,7 @@ export default function AdminPage() {
   );
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-teal">管理后台</Title>
       <div style={{ marginTop: 16 }}>
         <Tabs
