@@ -251,7 +251,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
             comment = Comment(
                 post_id=pid,
                 user_id=user.id,
-                parent_comment_id=tc.parent_comment_id or tc.id,
+                parent_comment_id=tc.id,
                 reply_to_user_id=tc.user_id,
                 content=reply_content,
             )
