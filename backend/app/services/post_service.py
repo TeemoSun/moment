@@ -254,7 +254,7 @@ def create_post(db: Session, user: User, data: PostCreateIn) -> dict:
     return post_to_out(db, post, viewer_id=user.id)
 
 
-def get_feed(db: Session, viewer_id: int, cursor: str | None, limit: int = 20) -> dict:
+def get_feed(db: Session, viewer_id: int, cursor: str | None, limit: int = 10) -> dict:
     friend_ids: list[int] = []
     friendships = (
         db.query(Friendship)
@@ -332,7 +332,7 @@ def get_user_posts(
     viewer_id: int,
     target_user_id: int,
     cursor: str | None,
-    limit: int = 20,
+    limit: int = 10,
 ) -> dict:
     from app.utils.friends import are_friends
 

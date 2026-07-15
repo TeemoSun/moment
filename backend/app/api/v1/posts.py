@@ -27,7 +27,7 @@ def create_post(
 @router.get("/feed", response_model=FeedOut)
 def get_feed(
     cursor: str | None = Query(default=None),
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -58,7 +58,7 @@ def delete_post(
 def get_user_posts(
     user_id: int,
     cursor: str | None = Query(default=None),
-    limit: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:

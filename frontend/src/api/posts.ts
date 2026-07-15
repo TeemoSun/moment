@@ -52,7 +52,7 @@ export interface PostCreateIn {
   visibility: "public" | "friends";
 }
 
-export function getFeed(cursor?: string, limit = 20): Promise<FeedOut> {
+export function getFeed(cursor?: string, limit = 10): Promise<FeedOut> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   params.set("limit", String(limit));
@@ -71,7 +71,7 @@ export function deletePost(id: number): Promise<void> {
   return deleteJson<void>(`/api/v1/posts/${id}`);
 }
 
-export function getUserPosts(userId: number, cursor?: string, limit = 20): Promise<FeedOut> {
+export function getUserPosts(userId: number, cursor?: string, limit = 10): Promise<FeedOut> {
   const params = new URLSearchParams();
   if (cursor) params.set("cursor", cursor);
   params.set("limit", String(limit));
