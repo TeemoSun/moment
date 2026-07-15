@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   moments:
-    build: .
+    image: pigzho/moments:latest
     container_name: moments
     ports:
       - "${MOMENTS_PORT:-8000}:8000"
