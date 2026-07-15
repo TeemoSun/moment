@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, get_optional_user, verify_csrf
+from app.core.deps import get_current_user, verify_csrf
 from app.database import get_db
 from app.models.users import User
 from app.schemas.comment import (
@@ -109,11 +109,9 @@ def get_comment_media(
     comment_id: int,
     spec: str,
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
 ) -> FileResponse:
-    path, content_type = comment_service.get_comment_image(
-        db, current_user.id if current_user else None, comment_id, spec
-    )
+    path, content_type = comment_service.get_comment_image(db, current_user.id, comment_id, spec)
     return FileResponse(
         path, media_type=content_type, headers={"Cache-Control": "private, max-age=3600"}
     )

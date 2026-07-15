@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, get_optional_user, verify_csrf
+from app.core.deps import get_current_user, verify_csrf
 from app.database import get_db
 from app.models.users import User
 from app.schemas.media import MediaUploadOut
@@ -38,11 +38,9 @@ def get_post_media(
     media_id: int,
     spec: str,
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
 ) -> FileResponse:
-    path, content_type = media_service.get_media_file(
-        db, current_user.id if current_user else None, post_id, media_id, spec
-    )
+    path, content_type = media_service.get_media_file(db, current_user.id, post_id, media_id, spec)
     return FileResponse(
         path, media_type=content_type, headers={"Cache-Control": "private, max-age=3600"}
     )

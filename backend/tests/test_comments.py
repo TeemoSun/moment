@@ -464,3 +464,48 @@ def test_comment_image_inaccessible_after_post_invisible(
     _set_user_token(client, stranger_id)
     resp = client.get(thumb_url)
     assert resp.status_code == 403
+
+
+def test_comment_image_anonymous_requires_auth(
+    client: TestClient, db_session: Session
+) -> None:
+    _init_system(client)
+    _login(client)
+    post = _create_post_via_api(client, content="public post", visibility="public")
+    post_id = post["id"]
+
+    csrf = client.cookies.get("moments_csrf")
+    img_bytes = _make_image_bytes()
+    buf = io.BytesIO(img_bytes)
+    resp = client.post(
+        "/api/v1/comments/media",
+        files={"file": ("test.png", buf, "image/png")},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert resp.status_code == 200
+    media_id = resp.json()["media_id"]
+
+    resp = client.post(
+        f"/api/v1/posts/{post_id}/comments",
+        json={"content": "Image comment", "media_id": media_id},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert resp.status_code == 201
+    thumb_url = resp.json()["image_thumb_url"]
+    assert thumb_url is not None
+
+    client.cookies.clear()
+    resp = client.get(thumb_url)
+    assert resp.status_code == 401
+    assert resp.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_comment_image_anonymous_requires_auth_comment_missing(
+    client: TestClient,
+) -> None:
+    _init_system(client)
+    _login(client)
+    client.cookies.clear()
+    resp = client.get("/api/v1/comments/9999/media/thumb")
+    assert resp.status_code == 401
+    assert resp.json()["code"] == "AUTH_REQUIRED"

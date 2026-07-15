@@ -53,27 +53,6 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def get_optional_user(
-    request: Request,
-    db: Session = Depends(get_db),
-    token: str | None = Cookie(default=None, alias=settings.COOKIE_NAME),
-) -> User | None:
-    """可选认证：失败/未登录返回 None，不抛错。用于媒体访问（公开媒体可匿名看）。"""
-    if not token:
-        return None
-    try:
-        payload = decode_token(token)
-        user_id = int(payload["sub"])
-    except (ExpiredSignatureError, InvalidTokenError, KeyError, ValueError):
-        return None
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        return None
-    if user.status != "active":
-        return None
-    return user
-
-
 def verify_csrf(request: Request) -> None:
     """校验 X-CSRF-Token header == CSRF cookie。"""
     header_token = request.headers.get("X-CSRF-Token")

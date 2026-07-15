@@ -168,6 +168,34 @@ def test_upload_invalid_format(client: TestClient) -> None:
     assert resp.json()["code"] == "UNSUPPORTED_MEDIA"
 
 
+def test_media_anonymous_requires_auth(client: TestClient, db_session: Session) -> None:
+    _init_system(client)
+    _login(client)
+    img_bytes = _make_image_bytes()
+    result = _upload_file(client, "test.png", img_bytes, "image/png")
+    media_id = result["media_id"]
+    post_id = _create_post(db_session, user_id=1, visibility="public")
+    _bind_media_to_post(db_session, media_id, post_id)
+    client.cookies.clear()
+    resp = client.get(f"/api/v1/posts/{post_id}/media/{media_id}/original")
+    assert resp.status_code == 401
+    assert resp.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_media_anonymous_requires_auth_post_missing(
+    client: TestClient, db_session: Session
+) -> None:
+    _init_system(client)
+    _login(client)
+    img_bytes = _make_image_bytes()
+    result = _upload_file(client, "test.png", img_bytes, "image/png")
+    media_id = result["media_id"]
+    client.cookies.clear()
+    resp = client.get(f"/api/v1/posts/33/media/{media_id}/original")
+    assert resp.status_code == 401
+    assert resp.json()["code"] == "AUTH_REQUIRED"
+
+
 def test_media_access_public(client: TestClient, db_session: Session) -> None:
     _init_system(client)
     _login(client)
