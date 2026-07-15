@@ -93,3 +93,13 @@ If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is 
 - 凭感觉快速大致估计行数即可，不需要严谨计算。
 - 大规模修改流程中，若评审发现方案级缺陷，应回退至步骤2重新设计方案，而非在步骤5中强行修补。
 - `tool-agent` 仅作为编码执行器，分析与评审环节必须由主Agent主导完成。
+
+## Docker 镜像打包上传
+
+当用户要求打包/上传 Docker 镜像到 Docker Hub 时，务必遵循 `docs/Docker镜像打包上传.md` 的完整流程。要点：
+
+- 多阶段 `Dockerfile`（前端 build + 后端 runtime）位于仓库根目录，构建命令在根目录执行。
+- tag 规范：同时打 `<user>/moments:latest` 与 `<user>/moments:<YYYYMMDD>`（当日日期）。本项目 Docker Hub 用户名为 `pigzho`。
+- 流程：`docker build` → `docker login`（已登录可跳过）→ `docker push` 两个 tag。
+- 删除远程 tag 需走 Docker Hub API（带 JWT），详见文档；本地删除用 `docker rmi`。
+- 不要使用 `git commit hash` 作为 tag，统一用日期 tag。

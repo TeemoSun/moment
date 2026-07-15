@@ -6,8 +6,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-moments}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-moments}
       - POSTGRES_DB=${POSTGRES_DB:-moments}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    expose:
+      - "5432"
     volumes:
       - ./data/pg:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
     build: .
     container_name: moments
     ports:
-      - "8000:8000"
+      - "${MOMENTS_PORT:-8000}:8000"
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
