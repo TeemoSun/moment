@@ -10,6 +10,7 @@ interface AuthState {
   loading: boolean;
   initialized: boolean | null;
   allowInsecureClipboard: boolean;
+  appName: string;
   bootstrapped: boolean;
   fetchInitialized: () => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -23,6 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: false,
   initialized: null,
   allowInsecureClipboard: false,
+  appName: "Moments",
   bootstrapped: false,
 
   fetchInitialized: async () => {
@@ -34,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({
         initialized: res.initialized,
         allowInsecureClipboard: res.allow_insecure_clipboard ?? false,
+        appName: res.app_name || "Moments",
       });
     } catch {
       set({ initialized: false });

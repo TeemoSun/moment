@@ -17,7 +17,7 @@ interface NavItem {
 export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, appName } = useAuthStore();
   const { unreadCount, fetchUnread } = useFriendsStore();
   const isMobile = useMediaQuery("(max-width: 639px)");
 
@@ -60,7 +60,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       >
         <span onClick={() => navigate("/feed")} style={{ cursor: "pointer", flexShrink: 0 }}>
           <Title size="small" color="app-teal">
-            Moments
+            {appName}
           </Title>
         </span>
 
