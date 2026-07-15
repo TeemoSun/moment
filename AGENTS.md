@@ -16,7 +16,16 @@ Build frontend: `bash scripts/build.sh`.
 Backend lint/format/typecheck/test (run in `backend/`):
 - `uv run ruff check app && uv run ruff format --check app && uv run ruff format --check alembic`
 - `uv run mypy app`
-- `uv run pytest` (tests need a **running PostgreSQL**; they use a shared `moments_test` DB reset via TRUNCATE between tests. Ensure PG is up — e.g. `docker compose up -d db` from repo root, or run a local PG on `localhost:5432` with the `POSTGRES_*` creds from `.env`)
+- `uv run pytest` (tests need a **running PostgreSQL**; they use a shared `moments_test` DB reset via TRUNCATE between tests. Ensure PG is up — e.g. `docker compose up -d db` from repo root, or run a local PG on `localhost:5432` with the `POSTGRES_*` creds from `.env`).
+  - ⚠️ `docker-compose.yml` 的 `db` 服务用 `expose`（仅容器间互通），**不映射宿主端口**。本地跑 pytest 时 Python 需经 `localhost:5432` 连库，因此要先让 PG 对宿主机可达：临时写一个 `docker-compose.override.yml`（gitignored，勿提交）映射端口后重启 db——
+    ```yaml
+    services:
+      db:
+        ports:
+          - "5432:5432"
+    ```
+    然后 `docker compose down && docker compose up -d db`，并用 `docker exec moments-db pg_isready -U moments -d moments` 确认就绪再跑测试。用完可删除该 override 文件。
+  - 若宿主机已自带监听 `localhost:5432` 的 PG（用 `.env` 的 `POSTGRES_*` 凭证可连），则无需 override，直接 `docker compose up -d db` 或用本地 PG 即可。
 - single test: `uv run pytest tests/test_auth.py::TestClass::test_name -q`
 
 Frontend lint/format (run in `frontend/`):
