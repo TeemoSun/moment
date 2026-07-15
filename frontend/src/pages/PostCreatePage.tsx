@@ -113,7 +113,7 @@ export default function PostCreatePage() {
   };
 
   return (
-    <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
       <Title color="app-green">发动态</Title>
 
       <Card style={{ marginTop: 24 }}>

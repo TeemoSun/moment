@@ -194,7 +194,7 @@ export default function PostDetailPage() {
 
   if (postLoading) {
     return (
-      <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
         <div
           style={{
             textAlign: "center",
@@ -212,7 +212,7 @@ export default function PostDetailPage() {
 
   if (postError || !post) {
     return (
-      <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
           <div style={{ color: "#e05a5a", fontWeight: 500, marginBottom: 12 }}>
             {postError || "动态不存在"}
@@ -226,7 +226,7 @@ export default function PostDetailPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1920, margin: "0 auto", padding: "24px 16px" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
       <Button type="default" size="small" onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>
         返回
       </Button>
