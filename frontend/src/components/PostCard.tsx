@@ -81,16 +81,17 @@ export default function PostCard({
   };
 
   return (
-    <Card style={{ marginBottom: 16 }}>
+    <Card
+      style={{ marginBottom: 16, cursor: "pointer" }}
+      onClick={() => navigate(`/posts/${post.id}`)}
+    >
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 12,
           marginBottom: 12,
-          cursor: "pointer",
         }}
-        onClick={() => navigate(`/posts/${post.id}`)}
       >
         <Link
           to={`/users/${post.author.id}`}
@@ -159,6 +160,7 @@ export default function PostCard({
             gridTemplateColumns: getGridColumns(post.media.length),
             gap: 4,
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           {post.media.map((media, idx) => (
             <div
@@ -232,6 +234,7 @@ export default function PostCard({
           borderTop: "1.5px solid #e8dcc8",
           flexWrap: "wrap",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <span
           style={{
