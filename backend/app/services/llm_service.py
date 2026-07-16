@@ -106,6 +106,7 @@ async def generate_reply(
     cfg: LLMConfig | None = None,
     author_context: str | None = None,
     images_b64: list[str] | None = None,
+    my_reply_content: str | None = None,
 ) -> str:
     mock = _mock_response()
     if mock is not None:
@@ -121,10 +122,10 @@ async def generate_reply(
     )
     if author_context:
         user_text += f"\n\n{author_context}"
-    user_text += (
-        f"\n\n朋友圈原动态({author_name}发)：{post_content}\n\n"
-        f"{reply_to_name} 回复了你：{reply_to_content}"
-    )
+    user_text += f"\n\n朋友圈原动态({author_name}发)：{post_content}"
+    if my_reply_content:
+        user_text += f"\n\n你之前的评论：{my_reply_content}"
+    user_text += f"\n\n{reply_to_name} 回复了你：{reply_to_content}"
     content: list[dict] = [{"type": "text", "text": user_text}]
     if images_b64:
         for b64 in images_b64:

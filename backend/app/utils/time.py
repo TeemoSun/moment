@@ -6,9 +6,21 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
+
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 
 def utcnow() -> datetime:
     """返回 naive UTC datetime（无 tzinfo），与数据库存储格式一致。"""
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def beijing_now() -> datetime:
+    """返回 naive 北京时间 datetime（无 tzinfo），用于向用户/AI 展示。"""
+    return datetime.now(BEIJING_TZ).replace(tzinfo=None)
+
+
+def to_beijing(dt: datetime) -> datetime:
+    """把 naive UTC datetime 转为 naive 北京时间 datetime。"""
+    return dt.replace(tzinfo=UTC).astimezone(BEIJING_TZ).replace(tzinfo=None)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ from app.models.posts import Post
 from app.models.users import User
 from app.services import llm_service
 from app.utils.friends import are_friends
-from app.utils.time import utcnow
+from app.utils.time import beijing_now, to_beijing, utcnow
 
 logger = logging.getLogger("app.bot_engine")
 
@@ -103,10 +103,10 @@ def _media_placeholder_for_post(db: Session, post_id: int) -> str:
     return "".join(parts)
 
 
-def _format_post_for_context(db: Session, post: Post, now: datetime) -> str:
+def _format_post_for_context(db: Session, post: Post) -> str:
     """把一条动态及其评论格式化为上下文文本片段。"""
     media_tag = _media_placeholder_for_post(db, post.id)
-    ts = post.created_at.strftime("%Y-%m-%d %H:%M")
+    ts = to_beijing(post.created_at).strftime("%Y-%m-%d %H:%M")
     body = post.content or ""
     if media_tag:
         body = f"{body} {media_tag}" if body else media_tag
@@ -120,7 +120,7 @@ def _format_post_for_context(db: Session, post: Post, now: datetime) -> str:
     for c in comments:
         c_author = db.query(User).filter(User.id == c.user_id).first()
         c_name = c_author.nickname if c_author else "未知"
-        c_ts = c.created_at.strftime("%Y-%m-%d %H:%M")
+        c_ts = to_beijing(c.created_at).strftime("%Y-%m-%d %H:%M")
         c_body = c.content or ""
         if c.image_thumb_path:
             c_body = f"{c_body} [图片]".strip()
@@ -132,7 +132,6 @@ def _build_author_context(
     db: Session, author_id: int, exclude_post_id: int | None = None
 ) -> str | None:
     """构建作者最近 10 条朋友圈（含评论）的上下文文本。无则返回 None。"""
-    now = utcnow()
     q = (
         db.query(Post)
         .filter(Post.user_id == author_id, Post.deleted_at.is_(None))
@@ -143,9 +142,9 @@ def _build_author_context(
     posts = q.limit(10).all()
     if not posts:
         return None
-    now_str = now.strftime("%Y-%m-%d %H:%M")
+    now_str = beijing_now().strftime("%Y-%m-%d %H:%M")
     header = f"当前时间：{now_str}\n以下是作者最近的朋友圈动态："
-    body = "\n\n".join(_format_post_for_context(db, p, now) for p in posts)
+    body = "\n\n".join(_format_post_for_context(db, p) for p in posts)
     return f"{header}\n\n{body}"
 
 
@@ -180,6 +179,26 @@ def _get_comment_image_b64(db: Session, comment: Comment) -> list[str]:
     if not p.is_file():
         return []
     return [base64.b64encode(p.read_bytes()).decode()]
+
+
+def _get_bot_reply_text(db: Session, bot_user_id: int, target_comment: Comment) -> str | None:
+    """获取 bot 之前发的那条被回复的评论文本（用于回复 prompt 上下文）。
+
+    被回复的评论可能直接挂在动态下（parent_comment_id=None），也可能挂在某条
+    普通评论下（二级回复），均通过 BotReplyLog 的 reply_comment_id 定位。
+    """
+    reply_log = (
+        db.query(BotReplyLog)
+        .filter(
+            BotReplyLog.bot_user_id == bot_user_id,
+            BotReplyLog.reply_comment_id == target_comment.parent_comment_id,
+        )
+        .first()
+    )
+    if not reply_log:
+        return None
+    my_comment = db.query(Comment).filter(Comment.id == reply_log.reply_comment_id).first()
+    return my_comment.content if my_comment else None
 
 
 async def run_bot(bot_user_id: int) -> None:
@@ -316,6 +335,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
             author_context = _build_author_context(
                 db, inner_post.user_id, exclude_post_id=inner_post.id
             )
+            my_reply_content = _get_bot_reply_text(db, user.id, tc)
             reply_content = await llm_service.generate_reply(
                 persona=bot.persona,
                 post_content=inner_post.content,
@@ -326,6 +346,7 @@ async def _run_bot_inner(db: Session, bot: Bot, user: User) -> None:
                 cfg=llm_cfg,
                 author_context=author_context,
                 images_b64=_get_comment_image_b64(db, tc) or None,
+                my_reply_content=my_reply_content,
             )
             if not reply_content:
                 continue
