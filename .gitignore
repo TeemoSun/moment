@@ -30,6 +30,7 @@ logs/
 .idea/
 .vscode/
 *.swp
+.kilo/plans/
 
 # AGENTS（内部忽略交由 .kilo/.gitignore 管理）
 .codegraph/

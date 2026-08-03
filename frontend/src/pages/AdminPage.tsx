@@ -448,7 +448,7 @@ export default function AdminPage() {
     setBotModalError("");
     try {
       await deleteBot(deletingBotId);
-      notify.success("机器人已停用");
+      notify.success("机器人已删除");
       setShowDeleteBotModal(false);
       setDeletingBotId(null);
       await loadBots();
@@ -1523,7 +1523,7 @@ export default function AdminPage() {
                   setShowDeleteBotModal(true);
                 }}
               >
-                停用
+                删除
               </Button>
             </div>
           </Card>
@@ -2065,7 +2065,7 @@ export default function AdminPage() {
 
       <Modal
         open={showDeleteBotModal}
-        title="确认停用机器人"
+        title="确认删除机器人"
         onClose={() => {
           setShowDeleteBotModal(false);
           setDeletingBotId(null);
@@ -2074,7 +2074,7 @@ export default function AdminPage() {
         onOk={handleDeleteBot}
         typewriter={false}
       >
-        <p style={{ margin: 0 }}>确定要停用此机器人吗？</p>
+        <p style={{ margin: 0 }}>确定要删除此机器人吗？</p>
         {botModalError && (
           <p style={{ color: "#e05a5a", fontWeight: 500, marginTop: 8 }}>{botModalError}</p>
         )}
