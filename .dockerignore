@@ -9,11 +9,13 @@ LICENSE
 README.md
 AGENTS.md
 docs/
+scripts/
 
 # IDE / 工具
 .idea/
 .vscode/
 .kilo/
+kilo.json
 .codegraph/
 *.swp
 .DS_Store
@@ -32,6 +34,7 @@ backend/**/*.egg-info/
 backend/.mypy_cache/
 backend/.ruff_cache/
 backend/.pytest_cache/
+backend/tests/
 
 # ===== 前端：node_modules 与本地构建产物 =====
 frontend/node_modules/

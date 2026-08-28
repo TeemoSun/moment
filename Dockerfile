@@ -1,29 +1,53 @@
+# syntax=docker/dockerfile:1
+
 # ===== Stage 1: 前端构建 =====
-FROM node:20-bookworm-slim AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci || npm install
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm config set registry https://registry.npmmirror.com \
+    && npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# ===== Stage 2: 后端运行 =====
-FROM python:3.12-slim AS runtime
-# 安装 ffmpeg（视频首帧抽取）
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-# 安装 uv
+# ===== Stage 2: 后端依赖构建 =====
+FROM python:3.12-slim AS backend-builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app/backend
-# 先拷依赖描述以便利用缓存
-COPY backend/pyproject.toml backend/uv.lock* ./
-RUN uv sync --frozen --no-dev
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
 
-COPY backend/ ./
+COPY backend/pyproject.toml backend/uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+# ===== Stage 3: 生产运行时 =====
+FROM python:3.12-slim AS runtime
+
+# 替换 Debian 软件源为阿里云镜像以加速下载，并安装 ffmpeg 运行库
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g; s/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null \
+    || sed -i 's/deb.debian.org/mirrors.aliyun.com/g; s/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+WORKDIR /app/backend
+
+# 复制已构建好的 Python 虚拟环境与前端静态产物
+COPY --from=backend-builder /app/backend/.venv /app/backend/.venv
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
-ENV PYTHONUNBUFFERED=1
+# 复制后端业务代码
+COPY backend/ ./
+
+# 环境变量配置
+ENV PATH="/app/backend/.venv/bin:$PATH" \
+    PYTHONPATH="/app/backend" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 EXPOSE 8000
 
-# alembic 迁移由 main.py lifespan 自动执行，无需在此重复
-CMD ["uv", "run", "gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]
+# alembic 迁移由 main.py lifespan 自动执行；直接使用虚拟环境中的 gunicorn 启动
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]

@@ -11,10 +11,11 @@
 
 ## Dockerfile 说明
 
-`Dockerfile` 为多阶段构建：
+`Dockerfile` 采用三阶段多阶段构建（Multi-Stage Build）：
 
-- **Stage 1 `frontend-builder`**：基于 `node:20-bookworm-slim`，执行 `npm ci`（回退 `npm install`）+ `npm run build`，产出 `frontend/dist`。
-- **Stage 2 `runtime`**：基于 `python:3.12-slim`，安装 `ffmpeg`（视频首帧抽取）、`uv`（来自 `ghcr.io/astral-sh/uv:latest`），`uv sync --frozen --no-dev` 安装后端依赖，拷入后端代码与前端 `dist`，暴露 `8000` 端口，以 gunicorn + uvicorn worker 启动。
+- **Stage 1 `frontend-builder`**：基于 `node:20-slim`，利用 BuildKit 缓存挂载执行 `npm ci` + `npm run build`，产出 `frontend/dist`。
+- **Stage 2 `backend-builder`**：基于 `python:3.12-slim`，使用 `uv` 并配合 BuildKit 缓存挂载执行 `uv sync --frozen --no-dev`，在容器内预编译 Python 字节码并生成纯净的 `.venv` 虚拟环境。
+- **Stage 3 `runtime`**：基于 `python:3.12-slim`，安装必要的运行时依赖 `ffmpeg`（视频首帧抽取与元数据解析）并清理 apt 缓存；仅从前置阶段复制 `.venv` 与前端 `dist`，拷入后端代码，不残留 `uv` 工具与 wheel 缓存；暴露 `8000` 端口，直接通过虚拟环境中的 `gunicorn` + `uvicorn` worker 启动。
 
 > 注意：alembic 迁移由 `app.main.lifespan` 在容器启动时自动执行，Dockerfile 不单独运行迁移。
 
