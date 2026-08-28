@@ -26,11 +26,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ===== Stage 3: 生产运行时 =====
 FROM python:3.12-slim AS runtime
 
-# 替换 Debian 软件源为阿里云镜像以加速下载，并安装 ffmpeg 运行库
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g; s/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null \
-    || sed -i 's/deb.debian.org/mirrors.aliyun.com/g; s/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
-    && apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+# 从静态镜像引入独立的 ffmpeg 与 ffprobe（避免安装 200+ 个无用 X11/Mesa 系统库，减少数百兆体积并秒级构建）
+COPY --from=mwader/static-ffmpeg:latest /ffmpeg /ffprobe /usr/local/bin/
 
 WORKDIR /app/backend
 
