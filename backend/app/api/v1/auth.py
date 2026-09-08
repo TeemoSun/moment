@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, verify_csrf
+from app.core.ratelimit import hit as rate_limit
 from app.database import get_db
 from app.models.users import User
 from app.schemas.auth import LoginIn, RegisterIn, RSAKeyOut, TokenOut
@@ -25,14 +26,16 @@ def get_rsa_public_key(db: Session = Depends(get_db)) -> RSAKeyOut:
 @router.post("/register", response_model=TokenOut)
 def register(
     data: RegisterIn,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenOut:
+    rate_limit("register", request.client.host if request.client else "unknown", 5, 3600)
     user = auth_service.register(db, data)
     from app.core.cookies import generate_csrf_token, set_auth_cookies
     from app.core.jwt import create_access_token
 
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.token_version)
     csrf_token = generate_csrf_token()
     set_auth_cookies(response, token, csrf_token)
     return TokenOut(user=user_to_me_out(user))
@@ -41,9 +44,11 @@ def register(
 @router.post("/login", response_model=TokenOut)
 def login(
     data: LoginIn,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> TokenOut:
+    rate_limit("login", request.client.host if request.client else "unknown", 10, 300)
     user = auth_service.login(db, data, response)
     return TokenOut(user=user_to_me_out(user))
 

@@ -34,6 +34,9 @@ def get_current_user(
     if not user:
         raise AppError(ErrorCode.AUTH_REQUIRED, "用户不存在", 401)
 
+    if int(payload.get("ver", 0)) != user.token_version:
+        raise AppError(ErrorCode.AUTH_REQUIRED, "登录凭证已失效，请重新登录", 401)
+
     if user.role == "bot":
         raise AppError(ErrorCode.AUTH_REQUIRED, "机器人账号无法访问", 401)
 

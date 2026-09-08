@@ -33,7 +33,7 @@ def init_system(
     db: Session = Depends(get_db),
 ) -> TokenOut:
     user = system_service.init_system(db, data)
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.token_version)
     csrf_token = generate_csrf_token()
     set_auth_cookies(response, token, csrf_token)
     return TokenOut(user=user_to_me_out(user))

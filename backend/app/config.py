@@ -111,6 +111,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Moments"
     DEBUG: bool = False
     SECURE_COOKIES: bool = False
+    RATE_LIMIT_ENABLED: bool = True
     ALLOW_INSECURE_CLIPBOARD: bool = False
 
     DB_URL: str = ""

@@ -107,7 +107,7 @@ def login(db: Session, data: LoginIn, response: Response) -> User:
     user.last_login_at = now
     db.commit()
 
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.token_version)
     csrf_token = generate_csrf_token()
     set_auth_cookies(response, token, csrf_token)
     return user
@@ -129,7 +129,7 @@ def _increment_failed(db: Session, user: User) -> None:
 
 def refresh(db: Session, current_user: User, response: Response) -> User:
     """续签：重新签 JWT 写 cookie，返回 user。"""
-    token = create_access_token(current_user.id, current_user.role)
+    token = create_access_token(current_user.id, current_user.role, current_user.token_version)
     csrf_token = generate_csrf_token()
     set_auth_cookies(response, token, csrf_token)
     return current_user

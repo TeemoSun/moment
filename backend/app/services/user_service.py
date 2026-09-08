@@ -76,6 +76,7 @@ def change_password(db: Session, user: User, data: PasswordChangeIn) -> None:
         raise AppError(ErrorCode.PASSWORD_TOO_WEAK, "密码强度不足", 400, {"errors": pw_errors})
 
     user.password_hash = hash_password(new_plain)
+    user.token_version += 1  # 使旧 JWT 失效
     db.commit()
 
 

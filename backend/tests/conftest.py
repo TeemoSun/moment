@@ -86,6 +86,7 @@ def _override_db_url(
     monkeypatch.setenv("DB_URL", test_url)
     monkeypatch.setenv("SKIP_ALEMBIC", "1")
     monkeypatch.setenv("STORAGE_ROOT", "/tmp/moment_test_storage")
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
 
     import app.config as cfg
 
