@@ -135,7 +135,11 @@ def stream_to_file(file_obj, dest: Path, max_bytes: int) -> int:
     total = 0
     chunk_size = 1024 * 1024  # 1MB
     file_obj.seek(0)
-    with open(dest, "wb") as f:
+    storage_root = get_storage_root().resolve()
+    safe_dest = Path(dest).resolve()
+    if storage_root not in safe_dest.parents:
+        raise AppError(ErrorCode.VALIDATION_ERROR, "目标路径非法", 400)
+    with safe_dest.open("wb") as f:
         while True:
             chunk = file_obj.read(chunk_size)
             if not chunk:

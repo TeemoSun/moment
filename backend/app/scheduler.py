@@ -19,10 +19,12 @@ def _try_acquire_lock() -> bool:
     global _lock_fd, _is_master
     import fcntl
 
-    lock_path = PROJECT_ROOT / "data" / ".bot_scheduler.lock"
+    lock_path = (PROJECT_ROOT / "data" / ".bot_scheduler.lock").resolve()
+    if PROJECT_ROOT.resolve() not in lock_path.parents:
+        raise RuntimeError("lock path escaped project root")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        _lock_fd = open(lock_path, "w")
+        _lock_fd = lock_path.open("w")
         fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         _is_master = True
         return True
