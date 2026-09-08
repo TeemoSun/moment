@@ -7,7 +7,7 @@
 - **后端**：Python 3.12 + FastAPI + SQLAlchemy 2.x + uv
 - **前端**：React 18 + TypeScript + Vite + Zustand + animal-island-ui（npm 包）
 - **数据库**：PostgreSQL 16
-- **部署**：Docker（多阶段构建，镜像已推送 `pigzho/moments`）
+- **部署**：Docker（多阶段构建，镜像发布在 GHCR `ghcr.io/teemosun/moment`）
 
 ## 快速开始
 
@@ -33,7 +33,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 ### Docker 部署
 
-本仓库提供 `docker-compose.yml`，用一条命令拉起 PostgreSQL 16 + 应用，适合服务器一键部署。镜像已发布到 Docker Hub（`pigzho/moments`），无需本地构建。
+本仓库提供 `docker-compose.yml`，用一条命令拉起 PostgreSQL 16 + 应用，适合服务器一键部署。镜像由 GitHub Actions 自动构建并发布到 GHCR（`ghcr.io/teemosun/moment`），无需本地构建。
 
 #### 1. 准备配置
 
@@ -80,7 +80,7 @@ docker compose up -d
 
 ```yaml
   moments:
-    image: pigzho/moments:latest
+    image: ghcr.io/teemosun/moment:latest
 ```
 
 随后：

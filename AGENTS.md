@@ -190,10 +190,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Docker 镜像打包上传
 
-当用户要求打包/上传 Docker 镜像到 Docker Hub 时，务必遵循 `docs/Docker镜像打包上传.md` 的完整流程。要点：
+镜像发布到 GitHub Container Registry（GHCR），正常流程由 `.github/workflows/docker-publish.yml` 在 push 到 `main`、打 `v*.*.*` tag 或手动触发时自动构建推送，无需手动打包。详见 `docs/Docker镜像打包上传.md`。要点：
 
-- 多阶段 `Dockerfile`（前端 build + 后端 runtime）位于仓库根目录，构建命令在根目录执行。
-- tag 规范：同时打 `<user>/moments:latest` 与 `<user>/moments:<YYYYMMDD>`（当日日期）。本项目 Docker Hub 用户名为 `pigzho`。
-- 流程：`docker build` → `docker login`（已登录可跳过）→ `docker push` 两个 tag。
-- 删除远程 tag 需走 Docker Hub API（带 JWT），详见文档；本地删除用 `docker rmi`。
-- 不要使用 `git commit hash` 作为 tag，统一用日期 tag。
+- 镜像地址：`ghcr.io/teemosun/moment`；多阶段 `Dockerfile`（前端 build + 后端 runtime）位于仓库根目录。
+- tag 规范（metadata-action 自动生成）：`latest`、`<YYYYMMDD>` 日期 tag、`sha-<short>`；`v*.*.*` tag 额外生成 semver tag。
+- 本地备用手动推送：仓库根目录执行 `bash scripts/docker-push.sh`（需已登录 GHCR）。
+- 删除远程版本走 GitHub Packages 页面或 `gh api /user/packages/container/moment/versions`，详见文档；本地删除用 `docker rmi`。
