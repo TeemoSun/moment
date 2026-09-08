@@ -104,8 +104,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.APP_NAME,
-    docs_url="/api/docs",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if settings.DEBUG else None,
+    openapi_url="/api/openapi.json" if settings.DEBUG else None,
     lifespan=lifespan,
 )
 
@@ -200,6 +200,7 @@ def health() -> JSONResponse:
 
 
 _frontend_dist = Path(settings.FRONTEND_DIST)
+_frontend_dist_resolved = _frontend_dist.resolve()
 if _frontend_dist.exists() and (_frontend_dist / "index.html").exists():
     from fastapi.staticfiles import StaticFiles
 
@@ -213,8 +214,8 @@ def spa_fallback(request: Request, full_path: str) -> Response:
     if full_path.startswith("api/") or full_path == "api":
         return JSONResponse({"detail": "资源不存在"}, status_code=404)
 
-    file_path = _frontend_dist / full_path
-    if full_path and file_path.is_file():
+    file_path = (_frontend_dist / full_path).resolve()
+    if full_path and _frontend_dist_resolved in file_path.parents and file_path.is_file():
         return FileResponse(file_path)
 
     # 尝试预压缩文件（br/gz），根据 Accept-Encoding 选择

@@ -89,11 +89,10 @@ def get_user_avatar(user_id: int, db: Session = Depends(get_db)) -> FileResponse
         default_path = BACKEND_ROOT / "assets" / "default_avatar.png"
         return FileResponse(default_path, media_type="image/png")
 
-    storage_root = get_storage_root()
+    storage_root = get_storage_root().resolve()
     file_path = (storage_root / user.avatar_path).resolve()
-    storage_root_resolved = storage_root.resolve()
 
-    if not str(file_path).startswith(str(storage_root_resolved)):
+    if storage_root not in file_path.parents:
         default_path = BACKEND_ROOT / "assets" / "default_avatar.png"
         return FileResponse(default_path, media_type="image/png")
 
