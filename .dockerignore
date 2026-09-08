@@ -17,6 +17,7 @@ scripts/
 .kilo/
 kilo.json
 .codegraph/
+**/.mimosa
 *.swp
 .DS_Store
 Thumbs.db

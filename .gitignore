@@ -26,6 +26,9 @@ logs/
 .env
 .env.lock
 
+# 本地 docker compose 覆盖（如临时映射 db 端口）
+docker-compose.override.yml
+
 # IDE
 .idea/
 .vscode/
@@ -35,6 +38,9 @@ kilo.json
 
 # AGENTS
 .codegraph/
+
+# Mimosa 安全扫描本地数据
+.mimosa/
 
 # OS
 .DS_Store

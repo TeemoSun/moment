@@ -11,7 +11,7 @@ RUN npm run build
 
 # ===== Stage 2: 后端依赖构建 =====
 FROM python:3.12-slim AS backend-builder
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /usr/local/bin/uv
 
 WORKDIR /app/backend
 ENV UV_LINK_MODE=copy \
@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.12-slim AS runtime
 
 # 从静态镜像引入独立的 ffmpeg 与 ffprobe（避免安装 200+ 个无用 X11/Mesa 系统库，减少数百兆体积并秒级构建）
-COPY --from=mwader/static-ffmpeg:latest /ffmpeg /ffprobe /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:9.0.1 /ffmpeg /ffprobe /usr/local/bin/
 
 WORKDIR /app/backend
 
@@ -45,6 +45,9 @@ ENV PATH="/app/backend/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
 
 # alembic 迁移由 main.py lifespan 自动执行；直接使用虚拟环境中的 gunicorn 启动
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]

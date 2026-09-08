@@ -18,7 +18,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from alembic import command
-from app.config import BACKEND_ROOT, ENV_FILE, ensure_runtime_env, settings
+from app.config import BACKEND_ROOT, ENV_FILE, PROJECT_ROOT, ensure_runtime_env, settings
 from app.schemas.common import AppError
 
 logger = logging.getLogger("app")
@@ -77,6 +77,33 @@ def _warmup_rsa() -> None:
         db.close()
 
 
+_STARTUP_LOCK_NAME = ".startup.lock"
+
+
+def _run_startup_db_tasks() -> None:
+    """以进程文件锁串行执行迁移/种子/RSA 预热。
+
+    gunicorn 多 worker 时每个 worker 都会跑 lifespan：并发执行 alembic
+    upgrade 有冲突风险，且全新库上两个 worker 可能各自生成 RSA 密钥对
+    导致 rsa_keys 出现多行。文件锁与 scheduler 使用同一模式，保证同一
+    容器内同一时刻只有一个 worker 执行启动任务，其余等待后复用结果。
+    """
+    import fcntl
+
+    lock_path = (PROJECT_ROOT / "data" / _STARTUP_LOCK_NAME).resolve()
+    if PROJECT_ROOT.resolve() not in lock_path.parents:
+        raise RuntimeError("startup lock path escaped project root")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("w") as lock_fd:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        try:
+            _run_alembic_upgrade()
+            _ensure_system_status()
+            _warmup_rsa()
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ensure_runtime_env()
@@ -87,9 +114,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from app.logging import setup_logging
 
     setup_logging()
-    _run_alembic_upgrade()
-    _ensure_system_status()
-    _warmup_rsa()
+    _run_startup_db_tasks()
     logger.info("Moments backend started")
     from app.scheduler import start_scheduler
 
@@ -215,13 +240,14 @@ def spa_fallback(request: Request, full_path: str) -> Response:
         return JSONResponse({"detail": "资源不存在"}, status_code=404)
 
     file_path = (_frontend_dist / full_path).resolve()
-    if full_path and _frontend_dist_resolved in file_path.parents and file_path.is_file():
+    contained = full_path and _frontend_dist_resolved in file_path.parents
+    if contained and file_path.is_file():
         return FileResponse(file_path)
 
     # 尝试预压缩文件（br/gz），根据 Accept-Encoding 选择
     accept_encoding = request.headers.get("accept-encoding", "")
     for enc, ext in (("br", ".br"), ("gzip", ".gz")):
-        if enc in accept_encoding:
+        if contained and enc in accept_encoding:
             compressed = file_path.with_name(file_path.name + ext)
             if compressed.is_file():
                 content_type = _guess_content_type(file_path)
