@@ -223,14 +223,15 @@ func setupSPAFallback(r chi.Router, frontendDist string) {
 
 		// Check if exact file exists
 		if fi, err := os.Stat(targetPath); err == nil && !fi.IsDir() {
-			serveCompressedOrRaw(w, req, targetPath)
+			isAsset := strings.HasPrefix(cleanPath, "assets/")
+			serveCompressedOrRaw(w, req, targetPath, isAsset)
 			return
 		}
 
 		// Serve index.html as fallback
 		indexPath := filepath.Join(distRoot, "index.html")
 		if _, err := os.Stat(indexPath); err == nil {
-			http.ServeFile(w, req, indexPath)
+			serveCompressedOrRaw(w, req, indexPath, false)
 			return
 		}
 
@@ -238,17 +239,23 @@ func setupSPAFallback(r chi.Router, frontendDist string) {
 	})
 }
 
-func serveCompressedOrRaw(w http.ResponseWriter, r *http.Request, filePath string) {
+func serveCompressedOrRaw(w http.ResponseWriter, r *http.Request, filePath string, isAsset bool) {
 	acceptEncoding := r.Header.Get("Accept-Encoding")
+	cacheControl := "no-cache"
+	if isAsset {
+		cacheControl = "public, max-age=31536000, immutable"
+	}
+
+	contentType := guessContentType(filePath)
 
 	// Try br
 	if strings.Contains(acceptEncoding, "br") {
 		brPath := filePath + ".br"
 		if fi, err := os.Stat(brPath); err == nil && !fi.IsDir() {
 			w.Header().Set("Content-Encoding", "br")
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			w.Header().Set("Cache-Control", cacheControl)
 			w.Header().Set("Vary", "Accept-Encoding")
-			w.Header().Set("Content-Type", guessContentType(filePath))
+			w.Header().Set("Content-Type", contentType)
 			http.ServeFile(w, r, brPath)
 			return
 		}
@@ -259,22 +266,51 @@ func serveCompressedOrRaw(w http.ResponseWriter, r *http.Request, filePath strin
 		gzPath := filePath + ".gz"
 		if fi, err := os.Stat(gzPath); err == nil && !fi.IsDir() {
 			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			w.Header().Set("Cache-Control", cacheControl)
 			w.Header().Set("Vary", "Accept-Encoding")
-			w.Header().Set("Content-Type", guessContentType(filePath))
+			w.Header().Set("Content-Type", contentType)
 			http.ServeFile(w, r, gzPath)
 			return
 		}
 	}
 
+	w.Header().Set("Cache-Control", cacheControl)
+	w.Header().Set("Content-Type", contentType)
 	http.ServeFile(w, r, filePath)
 }
 
 func guessContentType(p string) string {
-	ext := filepath.Ext(p)
+	ext := strings.ToLower(filepath.Ext(p))
+	switch ext {
+	case ".js", ".mjs":
+		return "application/javascript; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".html", ".htm":
+		return "text/html; charset=utf-8"
+	case ".json":
+		return "application/json; charset=utf-8"
+	case ".svg":
+		return "image/svg+xml"
+	case ".woff2":
+		return "font/woff2"
+	case ".woff":
+		return "font/woff"
+	case ".ttf":
+		return "font/ttf"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".webp":
+		return "image/webp"
+	case ".ico":
+		return "image/x-icon"
+	}
 	ct := mime.TypeByExtension(ext)
 	if ct == "" {
 		return "application/octet-stream"
 	}
 	return ct
 }
+
