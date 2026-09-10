@@ -57,9 +57,7 @@ Pre-commit hook (.githooks/pre-commit) runs the backend `go vet` + Go build + fr
 - Config is `pydantic-settings` (`app.config.Settings`); `settings` is a module-level singleton but tests/`lifespan` reassign it via `cfg.settings = cfg._create_settings()` after env changes — mutate env then re-create settings rather than editing the singleton.
 - **Migrations auto-run on startup.** `backend/internal/database/migrate.go` runs `schema.sql` under `.startup.lock`, syncs `alembic_version` (`0003_user_token_version`), and idempotently ensures `system_status` row 1.
 - **`.env` is mutated at runtime.** `backend/internal/config.EnsureRuntimeEnv()` creates `.env` from `.env.example` if missing and auto-generates + writes `JWT_SECRET` (chmod 0600) when empty. Don't assume `.env` is read-only.
-- **Database is PostgreSQL** (pgx/v5 driver, `jackc/pgx/v5/pgxpool`).
-- **Video handling needs ffmpeg/ffprobe** on PATH. The Docker image installs static ffmpeg/ffprobe via `mwader/static-ffmpeg:9.0.1`.
-- **Pure static build** (`CGO_ENABLED=0`) — no libc / glibc dependency, runs on minimal Alpine.
+- **Video handling needs ffmpeg** on PATH. The Docker image installs static ffmpeg via `mwader/static-ffmpeg:9.0.1`.
 - **CLI Healthcheck**: Binary supports `-healthcheck` flag (HTTP GET `/api/health`, exit 0/1) for container health probes without needing curl or python.
 
 ### Frontend gotchas

@@ -28,7 +28,7 @@ FROM alpine:3.20 AS runtime
 
 RUN apk --no-cache add ca-certificates tzdata
 
-COPY --from=mwader/static-ffmpeg:9.0.1 /ffmpeg /ffprobe /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:9.0.1 /ffmpeg /usr/local/bin/
 
 WORKDIR /app
 
