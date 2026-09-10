@@ -26,9 +26,7 @@ RUN go build -ldflags="-s -w" -o /moments ./cmd/moments
 # ===== Stage 3: 生产运行时 =====
 FROM alpine:3.20 AS runtime
 
-RUN apk --no-cache add ca-certificates tzdata
-
-COPY --from=mwader/static-ffmpeg:9.0.1 /ffmpeg /usr/local/bin/
+RUN apk --no-cache add ca-certificates tzdata ffmpeg
 
 WORKDIR /app
 
