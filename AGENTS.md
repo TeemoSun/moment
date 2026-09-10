@@ -3,6 +3,7 @@
 Moments: a朋友圈-style social app. Two packages in one repo (not a monorepo workspace):
 
 - `backend/` — Python 3.12 + FastAPI + SQLAlchemy 2.x, managed with **uv** (not pip). `backend/app/` is the app; `backend/alembic/` migrations; `backend/tests/` pytest suite. Run backend commands with `cd backend && uv run ...`.
+- `backend/` — Go 1.23 + Chi + pgx/v5 (pure Go, CGO_ENABLED=0). `backend/cmd/moments/` is the entrypoint; `backend/internal/` contains configs, database, models, repositories, services, API handlers, worker pool, and scheduler; `backend/tests/` integration test suite. Run backend commands with `cd backend && go ...`.
 - `frontend/` — React 18 + TS + Vite. `@/*` path alias → `frontend/src`. State via Zustand stores in `frontend/src/stores/`. Build = `tsc -b && vite build`.
 
 Backend serves the built frontend (`frontend/dist`) in production; dev runs them separately. `docker compose up -d` runs the full stack (postgres:16 `db` service + backend `moments` service); backend auto-runs migrations on startup.
@@ -18,6 +19,11 @@ Backend lint/format/typecheck/test (run in `backend/`):
 - `uv run mypy app`
 - `uv run pytest` (tests need a **running PostgreSQL**; they use a shared `moments_test` DB reset via TRUNCATE between tests. Ensure PG is up — e.g. `docker compose up -d db` from repo root, or run a local PG on `localhost:5432` with the `POSTGRES_*` creds from `.env`).
   - ⚠️ `docker-compose.yml` 的 `db` 服务用 `expose`（仅容器间互通），**不映射宿主端口**。本地跑 pytest 时 Python 需经 `localhost:5432` 连库，因此要先让 PG 对宿主机可达：临时写一个 `docker-compose.override.yml`（gitignored，勿提交）映射端口后重启 db——
+Backend lint/build/test (run in `backend/`):
+- `go vet ./...`
+- `CGO_ENABLED=0 go build ./...`
+- `go test -v ./...` (tests need a **running PostgreSQL**; they use a shared `moments_test` DB or local DB. Ensure PG is up — e.g. `docker compose up -d db` from repo root, or run a local PG on `localhost:5432` with the `POSTGRES_*` creds from `.env`).
+  - ⚠️ `docker-compose.yml` 的 `db` 服务用 `expose`（仅容器间互通），**不映射宿主端口**。本地跑测试时 Go 需经 `localhost:5432` 连库，若宿主机未暴露端口，可临时写一个 `docker-compose.override.yml`（gitignored，勿提交）映射端口后重启 db——
     ```yaml
     services:
       db:
@@ -28,6 +34,8 @@ Backend lint/format/typecheck/test (run in `backend/`):
   - 若宿主机已自带监听 `localhost:5432` 的 PG（用 `.env` 的 `POSTGRES_*` 凭证可连），则无需 override，直接 `docker compose up -d db` 或用本地 PG 即可。
   - **测试结束后务必清理**：跑完 pytest 后执行 `docker compose down`（从仓库根目录）停掉并移除 db 容器及临时网络，删除 override 文件（如有），保持环境干净。
 - single test: `uv run pytest tests/test_auth.py::TestClass::test_name -q`
+  - **测试结束后务必清理**：跑完测试后执行 `docker compose down`（从仓库根目录）停掉并移除 db 容器及临时网络，删除 override 文件（如有），保持环境干净。
+- single test: `go test -v ./tests -run TestAuth_TokenVersionInvalidation`
 
 Frontend lint/format (run in `frontend/`):
 - `npm run lint -- --max-warnings=0` (ESLint, flat config)
@@ -35,6 +43,7 @@ Frontend lint/format (run in `frontend/`):
 - typecheck: `npm run build` runs `tsc -b` (no standalone `typecheck` script)
 
 Pre-commit hook (.githooks/pre-commit) runs the backend ruff/mypy + frontend eslint/prettier checks above. Enable once with `git config core.hooksPath .githooks`.
+Pre-commit hook (.githooks/pre-commit) runs the backend `go vet` + Go build + frontend eslint/prettier checks above. Enable once with `git config core.hooksPath .githooks`.
 
 ### Backend gotchas
 
@@ -46,6 +55,12 @@ Pre-commit hook (.githooks/pre-commit) runs the backend ruff/mypy + frontend esl
 - **Video handling needs ffmpeg/ffprobe** on PATH (`app/storage/filekit.py` validates videos with `ffprobe`). The Docker image installs `ffmpeg`; local dev must have it too.
 - Migrations target PostgreSQL (`alembic/env.py` no longer uses `render_as_batch=True`; that was SQLite-only). `server_default` uses `func.now()`, not `text("CURRENT_TIMESTAMP")`.
 - Config is `pydantic-settings` (`app.config.Settings`); `settings` is a module-level singleton but tests/`lifespan` reassign it via `cfg.settings = cfg._create_settings()` after env changes — mutate env then re-create settings rather than editing the singleton.
+- **Migrations auto-run on startup.** `backend/internal/database/migrate.go` runs `schema.sql` under `.startup.lock`, syncs `alembic_version` (`0003_user_token_version`), and idempotently ensures `system_status` row 1.
+- **`.env` is mutated at runtime.** `backend/internal/config.EnsureRuntimeEnv()` creates `.env` from `.env.example` if missing and auto-generates + writes `JWT_SECRET` (chmod 0600) when empty. Don't assume `.env` is read-only.
+- **Database is PostgreSQL** (pgx/v5 driver, `jackc/pgx/v5/pgxpool`).
+- **Video handling needs ffmpeg/ffprobe** on PATH. The Docker image installs static ffmpeg/ffprobe via `mwader/static-ffmpeg:9.0.1`.
+- **Pure static build** (`CGO_ENABLED=0`) — no libc / glibc dependency, runs on minimal Alpine.
+- **CLI Healthcheck**: Binary supports `-healthcheck` flag (HTTP GET `/api/health`, exit 0/1) for container health probes without needing curl or python.
 
 ### Frontend gotchas
 

@@ -1,4 +1,6 @@
 # Python
+# Python (Backup)
+backend_py/
 __pycache__/
 *.py[cod]
 *.egg-info/

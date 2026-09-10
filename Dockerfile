@@ -9,45 +9,36 @@ RUN npm config set registry https://registry.npmmirror.com \
 COPY frontend/ ./
 RUN npm run build
 
-# ===== Stage 2: 后端依赖构建 =====
-FROM python:3.12-slim AS backend-builder
-COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /usr/local/bin/uv
-
+# ===== Stage 2: 后端 Go 静态编译 =====
+FROM golang:1.23-alpine AS backend-builder
 WORKDIR /app/backend
-ENV UV_LINK_MODE=copy \
-    UV_COMPILE_BYTECODE=1 \
-    UV_PYTHON_DOWNLOADS=never \
-    UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY} \
+    CGO_ENABLED=0 \
+    GOOS=linux
 
-COPY backend/pyproject.toml backend/uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+
+COPY backend/ ./
+RUN go build -ldflags="-s -w" -o /moments ./cmd/moments
 
 # ===== Stage 3: 生产运行时 =====
-FROM python:3.12-slim AS runtime
+FROM alpine:3.20 AS runtime
 
-# 从静态镜像引入独立的 ffmpeg 与 ffprobe（避免安装 200+ 个无用 X11/Mesa 系统库，减少数百兆体积并秒级构建）
+RUN apk --no-cache add ca-certificates tzdata
+
 COPY --from=mwader/static-ffmpeg:9.0.1 /ffmpeg /ffprobe /usr/local/bin/
 
-WORKDIR /app/backend
+WORKDIR /app
 
-# 复制已构建好的 Python 虚拟环境与前端静态产物
-COPY --from=backend-builder /app/backend/.venv /app/backend/.venv
+COPY --from=backend-builder /moments /app/moments
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
-
-# 复制后端业务代码
-COPY backend/ ./
-
-# 环境变量配置
-ENV PATH="/app/backend/.venv/bin:$PATH" \
-    PYTHONPATH="/app/backend" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+COPY backend/assets /app/backend/assets
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/app/moments", "-healthcheck"]
 
-# alembic 迁移由 main.py lifespan 自动执行；直接使用虚拟环境中的 gunicorn 启动
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8000", "app.main:app"]
+ENTRYPOINT ["/app/moments"]

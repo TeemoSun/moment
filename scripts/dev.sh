@@ -38,6 +38,7 @@ export VITE_BACKEND_PORT="$BACKEND_PORT"
 
 # ===== 后端 =====
 echo "[dev] 安装后端依赖..."
+echo "[dev] 启动后端 Go 服务 on ${BACKEND_HOST}:${BACKEND_PORT}..."
 (
   cd "$ROOT/backend"
   if command -v uv >/dev/null 2>&1; then
@@ -53,6 +54,7 @@ echo "[dev] 启动后端 uvicorn (reload) on ${BACKEND_HOST}:${BACKEND_PORT}..."
   else
     python -m uvicorn app.main:app --reload --host "$BACKEND_HOST" --port "$BACKEND_PORT"
   fi
+  go run ./cmd/moments
 ) &
 PIDS+=($!)
 

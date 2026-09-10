@@ -14,12 +14,8 @@ else
 fi
 
 # ===== 后端 =====
-echo "[pre-commit] 后端 Ruff 检查与格式化..."
-( cd "$ROOT/backend" && uv run ruff check app )
-( cd "$ROOT/backend" && uv run ruff format --check app )
-( cd "$ROOT/backend" && uv run ruff format --check alembic )
-
-echo "[pre-commit] 后端 Mypy 检查..."
-( cd "$ROOT/backend" && uv run mypy app )
+echo "[pre-commit] 后端 Go 代码检查与编译..."
+( cd "$ROOT/backend" && go vet ./... )
+( cd "$ROOT/backend" && CGO_ENABLED=0 go build -o /dev/null ./cmd/moments )
 
 echo "[pre-commit] 全部检查通过 ✅"

@@ -10,10 +10,10 @@
 根目录 `Dockerfile` 采用三阶段多阶段构建（Multi-Stage Build）：
 
 - **Stage 1 `frontend-builder`**：基于 `node:20-alpine`，利用 npm 淘宝镜像源与 BuildKit 缓存挂载执行 `npm ci` + `npm run build`，产出 `frontend/dist`。
-- **Stage 2 `backend-builder`**：基于 `python:3.12-slim`，使用 `uv`（阿里云 PyPI 源）并配合 BuildKit 缓存挂载执行 `uv sync --frozen --no-dev`，在容器内预编译 Python 字节码并生成纯净的 `.venv` 虚拟环境。
-- **Stage 3 `runtime`**：基于 `python:3.12-slim`，从静态镜像引入独立的 `ffmpeg` 与 `ffprobe`（避免安装 200+ 个无用 X11/Mesa 系统图形库，体积减少数百兆且无需漫长网络下载）；仅从前置阶段复制 `.venv` 与前端 `dist`，拷入后端代码，不残留 `uv` 工具与 wheel 缓存；暴露 `8000` 端口，直接通过虚拟环境中的 `gunicorn` + `uvicorn` worker 启动。
+- **Stage 2 `backend-builder`**：基于 `golang:1.23-alpine`，采用纯静态编译（`CGO_ENABLED=0`、`GOOS=linux`）构建出轻量且无 libc 依赖的独立单二进制产物 `/moments`。
+- **Stage 3 `runtime`**：基于极简 `alpine:3.20`，从静态镜像引入独立的 `ffmpeg` 与 `ffprobe`（用于视频首帧截取与媒体探查）；仅从前置阶段复制 Go 二进制文件、前端 `dist` 与静态内置资产；暴露 `8000` 端口；通过内置 `-healthcheck` flag 探针进行容器健康检查。
 
-> 注意：alembic 迁移由 `app.main.lifespan` 在容器启动时自动执行，Dockerfile 不单独运行迁移。
+> 注意：数据库表结构与 alembic_version 兼容标记由服务启动时自动幂等执行，Dockerfile 不单独运行迁移。
 
 ## tag 命名规范
 

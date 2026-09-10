@@ -5,6 +5,7 @@
 ## 技术栈
 
 - **后端**：Python 3.12 + FastAPI + SQLAlchemy 2.x + uv
+- **后端**：Go 1.23 + Chi + pgx/v5 (纯静态编译 CGO_ENABLED=0)
 - **前端**：React 18 + TypeScript + Vite + Zustand + animal-island-ui（npm 包）
 - **数据库**：PostgreSQL 16
 - **部署**：Docker（多阶段构建，镜像发布在 GHCR `ghcr.io/teemosun/moment`）
@@ -27,6 +28,9 @@ bash scripts/dev.sh
 bash scripts/build.sh        # 构建前端 dist
 cd backend && uv sync        # 安装后端依赖
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+bash scripts/build.sh                                                    # 构建前端 dist
+cd backend && CGO_ENABLED=0 go build -ldflags="-s -w" -o moments ./cmd/moments # 编译后端二进制
+./moments                                                                # 启动服务
 ```
 
 构建后由后端托管 `frontend/dist`，访问 http://localhost:8000 即可。
@@ -140,11 +144,13 @@ git config core.hooksPath .githooks
 ```
 moments/
 ├── backend/      后端（FastAPI）
+├── backend/      后端（Go 1.23 + Chi + pgx）
 ├── frontend/     前端（Vite + React）
 ├── docs/         设计与实现文档
 ├── scripts/      dev.sh / build.sh
 ├── storage/      媒体文件存储（运行时生成）
 ├── data/         SQLite 数据库（运行时生成）
+├── data/         PostgreSQL 数据（运行时生成）
 ├── logs/         运行时日志
 ├── Dockerfile
 └── docker-compose.yml
