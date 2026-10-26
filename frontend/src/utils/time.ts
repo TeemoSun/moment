@@ -1,5 +1,6 @@
 export function parseUTC(dateStr: string): Date {
-  return new Date(`${dateStr}Z`);
+  // 后端（Go）返回 RFC3339，自带 Z 或 ±HH:MM 时区后缀；仅对无时区的裸 UTC 字符串补 Z
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(dateStr) ? new Date(dateStr) : new Date(`${dateStr}Z`);
 }
 
 export function formatRelativeTime(dateStr: string): string {
