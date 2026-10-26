@@ -145,6 +145,7 @@ func (e *BotEngine) runBotInner(ctx context.Context, bot *model.Bot, user *model
 		if err := e.repos.Comment.Create(ctx, comment); err != nil {
 			continue
 		}
+		_ = e.repos.Like.Like(ctx, "post", p.ID, user.ID)
 
 		_ = e.repos.Bot.CreateReplyLog(ctx, &model.BotReplyLog{
 			BotUserID:       user.ID,
@@ -238,6 +239,7 @@ func (e *BotEngine) runBotInner(ctx context.Context, bot *model.Bot, user *model
 			if err := e.repos.Comment.Create(ctx, comment); err != nil {
 				continue
 			}
+			_ = e.repos.Like.Like(ctx, "post", pid, user.ID)
 
 			_ = e.repos.Bot.CreateReplyLog(ctx, &model.BotReplyLog{
 				BotUserID:       user.ID,

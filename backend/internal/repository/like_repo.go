@@ -60,6 +60,17 @@ ON CONFLICT (target_type, target_id, user_id) DO NOTHING
 	return liked, count, err
 }
 
+// Like idempotently inserts a like; it never unlikes an existing one.
+func (r *LikeRepo) Like(ctx context.Context, targetType string, targetID, userID int) error {
+	query := `
+INSERT INTO likes (target_type, target_id, user_id, created_at)
+VALUES ($1, $2, $3, NOW())
+ON CONFLICT (target_type, target_id, user_id) DO NOTHING
+`
+	_, err := r.pool.Exec(ctx, query, targetType, targetID, userID)
+	return err
+}
+
 func (r *LikeRepo) Unlike(ctx context.Context, targetType string, targetID, userID int) (count int, err error) {
 	deleteQuery := `
 DELETE FROM likes
